@@ -1,9 +1,9 @@
 # [설계] 인증 시스템 아키텍처 및 구현 가이드 (UUID Stateful Token)
 
-> **문서 번호:** 06_auth_architecture_spec.md  
-> **작성 일자:** 2025.01.10  
-> **설계 목적:** 복잡한 JWT 없이, **MySQL DB 기반의 세션 토큰**을 사용하여 직관적이고 강력한(강제 로그아웃 가능) 인증 시스템 구현.  
-> **전제 조건:** 로컬 DB(SQLite)를 사용하지 않으며, **서버 DB가 유일한 진실 공급원(Single Source of Truth)**이다.  
+> **문서 번호:** 06_auth_architecture_spec.md
+> **작성 일자:** 2025.01.10
+> **설계 목적:** 복잡한 JWT 없이, **MySQL DB 기반의 세션 토큰**을 사용하여 직관적이고 강력한(강제 로그아웃 가능) 인증 시스템 구현.
+> **전제 조건:** 로컬 DB(SQLite)를 사용하지 않으며, **서버 DB가 유일한 진실 공급원(Single Source of Truth)**이다.
 
 ---
 
