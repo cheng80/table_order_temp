@@ -1,18 +1,19 @@
-# [설계] 테이블오더 시스템 데이터베이스 상세 명세서 (v3.8)
+# [설계] 테이블오더 시스템 데이터베이스 상세 명세서 (v3.6)
 
-> - **문서 번호:** 07_database_schema_spec.md  
-> - **작성 일자:** 2026.01.10  
-> - **버전:** v3.8 (Final + Audit)  
-> - **변경 사항:**  
->   1. 모든 엔티티 및 연관 테이블에 `created_at` (생성 일시) 컬럼 추가 완료.  
->   2. 네이밍 규칙(Store Prefix, 예약어 회피) 적용 유지.  
+> - **문서 번호:** 07_database_schema_spec.md
+> - **작성 일자:** 2026.01.10
+> - **버전:** v3.6 (Final Polished)
+> - **변경 사항:**
+>   1. `USERS` → `MEMBERS` (시스템 충돌 방지)
+>   2. `TABLES` → `STORE_TABLES` (SQL 예약어 및 동음이의어 혼동 방지)
+>   3. 나머지(`ORDERS` 등)는 개발자 친화적 직관성 유지
 
 ---
 
-## 📌 ERD 타입 범례 (Legend)  
-* **[Strong Entity]:** 독립적으로 존재하는 강한 개체 (일반 사각형).  
-* **[Weak Entity]:** 부모가 있어야만 존재하는 약한 개체 (점선 사각형).   
-* **[Associative Entity]:** M:N 관계를 해소하는 연관 개체 (육각형 권장).  
+## 📌 ERD 타입 범례 (Legend)
+* **[Strong Entity]:** 부모 없이 독립적으로 존재하는 **강한 개체** (일반 사각형).
+* **[Weak Entity]:** 부모(FK)가 있어야만 존재하는 **약한 개체** (일반 사각형 + 부모 쪽 필수 관계).
+* **[Associative Entity]:** 두 개체 간의 M:N 관계를 해소하는 **연관(교차) 개체** (육각형 표현 권장).
 
 ---
 
@@ -30,7 +31,7 @@
 | business_number | Varchar(20) | YES | 사업자 등록번호 | - |
 | **access_token** | Varchar(64) | YES | 자동로그인 토큰 | UUID v4 |
 | last_login_at | Timestamp | YES | 마지막 접속 일시 | - |
-| **created_at** | Timestamp | NO | **가입 일시** | - |
+| created_at | Timestamp | NO | 가입 일시 | - |
 
 ### 1.2 STORES (매장)
 > **ERD Type: [Weak Entity]** (Parent: MEMBERS)
@@ -42,20 +43,21 @@
 | name | Varchar(50) | NO | 매장 상호명 | - |
 | is_open | Boolean | NO | 영업 상태 | True(영업중), False(마감) |
 | total_table_count | Int | NO | 총 보유 테이블 수 | 설정값 |
-| **created_at** | Timestamp | NO | **생성 일시** | - |
+| created_at | Timestamp | NO | 생성 일시 | - |
 
 ### 1.3 STORE_TABLES (테이블 기기)
 > **ERD Type: [Weak Entity]** (Parent: STORES)
+> **변경:** `TABLES` → `STORE_TABLES` (예약어 `TABLE` 혼동 방지)
 
 | 컬럼명 | 타입 | Null | 설명 | 비고 |
 | :--- | :--- | :--- | :--- | :--- |
-| **store_table_id** | BigInt | **PK** | 테이블 고유 ID | - |
+| **store_table_id** | BigInt | **PK** | 테이블 고유 ID | `table_id` 대체 |
 | **store_id** | BigInt | **FK** | 소속 매장 ID | - |
 | table_number | Int | NO | 테이블 번호 | 1, 2, 3... |
 | auth_code | Varchar(10) | NO | 기기 인증 PIN | - |
 | **status** | Varchar(20) | NO | **운영 상태** | AVAILABLE, RESERVED, DISABLED |
 | **capacity** | Int | NO | **수용 인원** | 예약 정원 체크 (Default 4) |
-| **created_at** | Timestamp | NO | **등록 일시** | - |
+| created_at | Timestamp | NO | 생성 일시 | - |
 
 ---
 
@@ -70,7 +72,7 @@
 | **store_id** | BigInt | **FK** | 소속 매장 ID | - |
 | name | Varchar(30) | NO | 카테고리명 | - |
 | sort_order | Int | NO | 정렬 순서 | - |
-| **created_at** | Timestamp | NO | **생성 일시** | - |
+| created_at | Timestamp | NO | 생성 일시 | - |
 
 ### 2.2 MENUS (메뉴)
 > **ERD Type: [Weak Entity]** (Parent: MENU_CATEGORIES)
@@ -85,7 +87,7 @@
 | image_url | Varchar(255) | YES | 이미지 URL | - |
 | is_soldout | Boolean | NO | 품절 여부 | - |
 | is_hidden | Boolean | NO | 숨김 여부 | - |
-| **created_at** | Timestamp | NO | **등록 일시** | - |
+| created_at | Timestamp | NO | 생성 일시 | - |
 
 ### 2.3 OPTION_GROUPS (옵션 그룹)
 > **ERD Type: [Weak Entity]** (Parent: STORES)
@@ -98,7 +100,7 @@
 | is_exclusive | Boolean | NO | 선택 방식 | True(라디오), False(체크) |
 | min_select | Int | NO | 최소 선택 수 | - |
 | max_select | Int | NO | 최대 선택 수 | - |
-| **created_at** | Timestamp | NO | **생성 일시** | - |
+| created_at | Timestamp | NO | 생성 일시 | - |
 
 ### 2.4 OPTIONS (옵션 상세)
 > **ERD Type: [Weak Entity]** (Parent: OPTION_GROUPS)
@@ -109,7 +111,7 @@
 | **option_group_id** | BigInt | **FK** | 소속 그룹 ID | - |
 | name | Varchar(30) | NO | 옵션명 | - |
 | extra_price | Int | NO | 추가 금액 | - |
-| **created_at** | Timestamp | NO | **생성 일시** | - |
+| created_at | Timestamp | NO | 생성 일시 | - |
 
 ### 2.5 MENU_OPTION_MAPPINGS (메뉴-옵션 연결)
 > **ERD Type: [Associative Entity]** (MENUS <-> OPTION_GROUPS)
@@ -119,7 +121,7 @@
 | **mapping_id** | BigInt | **PK** | 매핑 ID | - |
 | **menu_id** | BigInt | **FK** | 메뉴 ID | - |
 | **option_group_id** | BigInt | **FK** | 옵션 그룹 ID | - |
-| **created_at** | Timestamp | NO | **매핑 일시** | - |
+| created_at | Timestamp | NO | 생성 일시 | - |
 
 ---
 
@@ -127,6 +129,7 @@
 
 ### 3.1 STORE_ORDERS (주문 헤더)
 > **ERD Type: [Weak Entity]** (Parent: STORE_TABLES)
+> **변경:** `ORDERS` → `STORE_ORDERS` (예약어 `ORDER` 혼동 방지)
 
 | 컬럼명 | 타입 | Null | 설명 | 비고 |
 | :--- | :--- | :--- | :--- | :--- |
@@ -135,34 +138,32 @@
 | **store_id** | BigInt | **FK** | 매장 ID | - |
 | **store_table_id** | BigInt | **FK** | 테이블 ID | `STORE_TABLES` 참조 |
 | total_price | Int | NO | 주문 총 금액 | - |
-| **created_at** | Timestamp | NO | **주문 생성 일시** | - |
+| created_at | Timestamp | NO | 주문 생성 일시 | - |
 
 ### 3.2 PAYMENTS (결제 정보)
-> **ERD Type: [Weak Entity]** (Parent: STORE_ORDERS)
+> **ERD Type: [Weak Entity]** (Parent: ORDERS)
 
 | 컬럼명 | 타입 | Null | 설명 | 비고 |
 | :--- | :--- | :--- | :--- | :--- |
 | **payment_id** | BigInt | **PK** | 결제 ID | - |
-| **store_order_id** | BigInt | **FK** | 주문 ID | `STORE_ORDERS` 참조 |
+| **order_id** | BigInt | **FK** | 주문 ID | - |
 | payment_key | Varchar(100) | NO | Toss Payment Key | - |
 | method | Varchar(20) | NO | 결제 수단 | CARD, EASY_PAY |
 | total_amount | Int | NO | 승인 금액 | - |
 | status | Varchar(20) | NO | 결제 상태 | DONE, CANCELED |
-| approved_at | Timestamp | YES | 승인 일시 | 결제 완료 시점 |
-| **created_at** | Timestamp | NO | **생성 일시** | 결제 시도 시점 |
+| approved_at | Timestamp | YES | 승인 일시 | - |
 
 ### 3.3 ORDER_DETAILS (주문 상세)
-> **ERD Type: [Associative Entity]** (STORE_ORDERS <-> MENUS)
+> **ERD Type: [Associative Entity]** (ORDERS <-> MENUS)
 
 | 컬럼명 | 타입 | Null | 설명 | 비고 |
 | :--- | :--- | :--- | :--- | :--- |
 | **order_detail_id** | BigInt | **PK** | 상세 ID | - |
-| **store_order_id** | BigInt | **FK** | 주문 ID | `STORE_ORDERS` 참조 |
+| **order_id** | BigInt | **FK** | 주문 ID | - |
 | **menu_id** | BigInt | **FK** | 메뉴 ID | - |
 | quantity | Int | NO | 수량 | - |
 | price_snapshot | Int | NO | 시점 단가 | - |
 | cook_status | Varchar(20) | NO | 조리 상태 | PENDING, COOKING, DONE |
-| **created_at** | Timestamp | NO | **생성 일시** | - |
 
 ### 3.4 ORDER_DETAIL_OPTIONS (주문 옵션 상세)
 > **ERD Type: [Associative Entity]** (ORDER_DETAILS <-> OPTIONS)
@@ -173,7 +174,6 @@
 | **order_detail_id** | BigInt | **FK** | 주문 상세 ID | - |
 | **option_id** | BigInt | **FK** | 옵션 ID | - |
 | price_snapshot | Int | NO | 시점 추가금 | - |
-| **created_at** | Timestamp | NO | **생성 일시** | - |
 
 ---
 
@@ -187,7 +187,6 @@
 | **staff_call_item_id** | BigInt | **PK** | 항목 ID | - |
 | **store_id** | BigInt | **FK** | 매장 ID | - |
 | name | Varchar(30) | NO | 항목명 | - |
-| **created_at** | Timestamp | NO | **생성 일시** | - |
 
 ### 4.2 STAFF_CALL_LOGS (호출 로그)
 > **ERD Type: [Associative Entity]** (STORE_TABLES <-> STAFF_CALL_ITEMS)
@@ -198,7 +197,6 @@
 | **store_table_id** | BigInt | **FK** | 테이블 ID | `STORE_TABLES` 참조 |
 | **staff_call_item_id** | BigInt | **FK** | 항목 ID | - |
 | is_completed | Boolean | NO | 처리 여부 | - |
-| **created_at** | Timestamp | NO | **호출 일시** | - |
 
 ### 4.3 RESERVATIONS (예약)
 > **ERD Type: [Weak Entity]** (Parent: STORE_TABLES)
@@ -214,4 +212,4 @@
 | reserve_date | Date | NO | 예약 날짜 | 2026-01-10 |
 | reserve_time | Time | NO | 예약 시간 | 18:00 |
 | status | Varchar(20) | NO | 예약 상태 | CONFIRMED, CANCELED |
-| **created_at** | Timestamp | NO | **생성 일시** | - |
+| created_at | Timestamp | NO | 생성 일시 | - |

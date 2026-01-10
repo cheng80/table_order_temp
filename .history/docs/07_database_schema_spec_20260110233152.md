@@ -11,7 +11,7 @@
 
 ## 📌 ERD 타입 범례 (Legend)  
 * **[Strong Entity]:** 독립적으로 존재하는 강한 개체 (일반 사각형).  
-* **[Weak Entity]:** 부모가 있어야만 존재하는 약한 개체 (점선 사각형).   
+* **[Weak Entity]:** 부모가 있어야만 존재하는 약한 개체 (점선 사각형).  
 * **[Associative Entity]:** M:N 관계를 해소하는 연관 개체 (육각형 권장).  
 
 ---
@@ -180,38 +180,4 @@
 ## 4. 지원 및 예약 (Support & Reservation)
 
 ### 4.1 STAFF_CALL_ITEMS (호출 항목)
-> **ERD Type: [Weak Entity]** (Parent: STORES)
-
-| 컬럼명 | 타입 | Null | 설명 | 비고 |
-| :--- | :--- | :--- | :--- | :--- |
-| **staff_call_item_id** | BigInt | **PK** | 항목 ID | - |
-| **store_id** | BigInt | **FK** | 매장 ID | - |
-| name | Varchar(30) | NO | 항목명 | - |
-| **created_at** | Timestamp | NO | **생성 일시** | - |
-
-### 4.2 STAFF_CALL_LOGS (호출 로그)
-> **ERD Type: [Associative Entity]** (STORE_TABLES <-> STAFF_CALL_ITEMS)
-
-| 컬럼명 | 타입 | Null | 설명 | 비고 |
-| :--- | :--- | :--- | :--- | :--- |
-| **staff_call_id** | BigInt | **PK** | 로그 ID | - |
-| **store_table_id** | BigInt | **FK** | 테이블 ID | `STORE_TABLES` 참조 |
-| **staff_call_item_id** | BigInt | **FK** | 항목 ID | - |
-| is_completed | Boolean | NO | 처리 여부 | - |
-| **created_at** | Timestamp | NO | **호출 일시** | - |
-
-### 4.3 RESERVATIONS (예약)
-> **ERD Type: [Weak Entity]** (Parent: STORE_TABLES)
-
-| 컬럼명 | 타입 | Null | 설명 | 비고 |
-| :--- | :--- | :--- | :--- | :--- |
-| **reservation_id** | BigInt | **PK** | 예약 ID | Auto Increment |
-| **store_id** | BigInt | **FK** | 매장 ID | 조회 최적화 |
-| **store_table_id** | BigInt | **FK** | 테이블 ID | `STORE_TABLES` 참조 |
-| customer_name | Varchar(30) | NO | 예약자명 | - |
-| customer_phone | Varchar(20) | NO | 연락처 | - |
-| guest_count | Int | NO | 인원수 | capacity 체크용 |
-| reserve_date | Date | NO | 예약 날짜 | 2026-01-10 |
-| reserve_time | Time | NO | 예약 시간 | 18:00 |
-| status | Varchar(20) | NO | 예약 상태 | CONFIRMED, CANCELED |
-| **created_at** | Timestamp | NO | **생성 일시** | - |
+> **ERD Type: [Weak

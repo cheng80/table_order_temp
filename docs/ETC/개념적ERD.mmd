@@ -1,0 +1,45 @@
+---
+config:
+  layout: elk
+---
+flowchart TD
+    classDef strong fill:#fff,stroke:#333,stroke-width:2px;
+    classDef weak fill:#fff,stroke:#333,stroke-width:2px,stroke-dasharray: 5 5;
+    classDef assoc fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,shape:hexagon; 
+    classDef rel fill:#fff,stroke:#333,stroke-width:1px,shape:diamond;
+    Member[MEMBERS]:::strong
+    Store[STORES]:::weak
+    Table[STORE_TABLES]:::weak
+    Category[MENU_CATEGORIES]:::weak
+    Menu[MENUS]:::weak
+    Group[OPTION_GROUPS]:::weak
+    Option[OPTIONS]:::weak
+    Order[STORE_ORDERS]:::weak
+    Payment[PAYMENTS]:::weak
+    CallItem[STAFF_CALL_ITEMS]:::weak
+    Reserv[RESERVATIONS]:::weak
+    MapMenuOpt{{MENU_OPTION_MAPPINGS}}:::assoc
+    OrderDetail{{ORDER_DETAILS}}:::assoc
+    OrderDetailOpt{{ORDER_DETAIL_OPTIONS}}:::assoc
+    CallLog{{STAFF_CALL_LOGS}}:::assoc
+    R_Owns{소유}:::rel
+    R_Has{구성}:::rel
+    R_Define{정의}:::rel
+    R_Classify{분류}:::rel
+    R_Pay{결제}:::rel
+    R_Book{예약}:::rel
+    Member ---|1:N| R_Owns --- Store
+    Store ---|1:N| R_Has --- Table
+    Store ---|1:N| R_Define --- Category
+    Category ---|1:N| R_Classify --- Menu
+    
+    Store ---|1:N| R_Define --- Group
+    Group ---|1:N| R_Has --- Option
+    Menu --- MapMenuOpt --- Group
+    Table ---|1:N| R_Has --- Order
+    Order ---|1:1| R_Pay --- Payment
+    Order --- OrderDetail --- Menu
+    OrderDetail --- OrderDetailOpt --- Option
+    Store ---|1:N| R_Define --- CallItem
+    Table --- CallLog --- CallItem
+    Table ---|1:N| R_Book --- Reserv
