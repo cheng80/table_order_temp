@@ -1,0 +1,33 @@
+---
+config:
+  layout: elk
+---
+flowchart LR
+    %% 스타일 정의
+    classDef master fill:#e3f2fd,stroke:#1565c0,stroke-width:2px;
+    classDef history fill:#ffebee,stroke:#c62828,stroke-width:2px;
+    classDef connect fill:#fff,stroke:#333,stroke-width:1px,stroke-dasharray: 5 5;
+
+    %% 1. 마스터 데이터 (메뉴판 - 변하지 않음)
+    Menu["MENUS (상품 정의)"]:::master
+    Option["OPTIONS (옵션 정의)"]:::master
+
+    %% 2. 트랜잭션 데이터 (주문서 - 계속 쌓임)
+    Detail["ORDER_DETAILS (주문 한 줄)"]:::history
+    DetailOpt["ORDER_DETAIL_OPTIONS (선택된 옵션 내역)"]:::history
+
+    %% 3. 관계 연결
+    Detail -- "무엇을 시켰나? (FK)" --> Menu
+    DetailOpt -- "어떤 줄에 딸린 옵션인가? (FK)" --> Detail
+    DetailOpt -- "무슨 옵션인가? (FK)" --> Option
+
+    %% 시각적 그룹핑
+    subgraph "주문 발생 시 생성 (Transaction)"
+    Detail
+    DetailOpt
+    end
+
+    subgraph "사장님이 설정 (Master)"
+    Menu
+    Option
+    end
