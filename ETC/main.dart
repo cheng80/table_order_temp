@@ -1,40 +1,43 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 
 void main() {
-  runApp(const TableOrderTabletApp());
+  runApp(const TableOrderIntegratedApp());
 }
 
-class TableOrderTabletApp extends StatelessWidget {
-  const TableOrderTabletApp({super.key});
+class TableOrderIntegratedApp extends StatelessWidget {
+  const TableOrderIntegratedApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Table Order Integrated Mockup',
+      title: 'Table Order System v4.0',
       theme: ThemeData(
         useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal, brightness: Brightness.light),
-        scaffoldBackgroundColor: Colors.grey[50],
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.teal,
+          brightness: Brightness.light,
+        ),
+        scaffoldBackgroundColor: Colors.grey[100],
       ),
-      home: const TabletMainViewer(),
+      home: const MainViewer(),
     );
   }
 }
 
 // ---------------------------------------------------------------------------
-// [Viewer] 13개 화면 통합 뷰어
+// [Viewer] 통합 뷰어 (Navigation)
 // ---------------------------------------------------------------------------
-class TabletMainViewer extends StatefulWidget {
-  const TabletMainViewer({super.key});
+class MainViewer extends StatefulWidget {
+  const MainViewer({super.key});
 
   @override
-  State<TabletMainViewer> createState() => _TabletMainViewerState();
+  State<MainViewer> createState() => _MainViewerState();
 }
 
-class _TabletMainViewerState extends State<TabletMainViewer> {
-  int _selectedIndex = 7; // 기본값: T-01 (손님 메인)
+class _MainViewerState extends State<MainViewer> {
+  // DartPad에서 바로 보이도록 'W-02 대기 현황판'을 기본값으로 설정
+  int _selectedIndex = 16; 
 
   final List<Widget> _screens = [
     const ScreenA01Register(),
@@ -44,11 +47,16 @@ class _TabletMainViewerState extends State<TabletMainViewer> {
     const ScreenO04Banner(),
     const ScreenO05Table(),
     const ScreenO06Inquiry(),
+    const ScreenO07WaitingAdmin(),
+    const ScreenO08OptionGroup(),
+    const ScreenO09OptionDetail(),
     const ScreenT01ScrollSpy(),
     const ScreenT02Option(),
     const ScreenT03Cart(),
-    const ScreenT04StaffCall(), // ★ 수정됨: 아이콘/텍스트 복구
-    const ScreenT05AdminAuth(), // ★ 수정됨: 레이아웃 정렬 수정
+    const ScreenT04StaffCall(),
+    const ScreenT05AdminAuth(),
+    const ScreenW01WaitingRegister(),
+    const ScreenW02WaitingBoard(),
     const ScreenK01KDS(),
   ];
 
@@ -56,114 +64,125 @@ class _TabletMainViewerState extends State<TabletMainViewer> {
     "A-01 회원가입",
     "A-02 로그인",
     "O-01 점주 대시보드",
-    "O-02/03 메뉴 관리 (Split)",
+    "O-02 메뉴/원가",
     "O-04 배너 관리",
     "O-05 테이블 관리",
     "O-06 문의하기",
-    "T-01 테이블 메인 (ScrollSpy)",
-    "T-02 옵션 팝업",
-    "T-03 장바구니/결제",
-    "T-04 직원 호출 (Fix)",
-    "T-05 관리자 인증 (Fix)",
+    "O-07 대기 관리",
+    "O-08 옵션 그룹",
+    "O-09 옵션 상세",
+    "T-01 테이블 메인",
+    "T-02 옵션 선택",
+    "T-03 장바구니",
+    "T-04 직원 호출",
+    "T-05 관리자 인증",
+    "W-01 대기 등록",
+    "W-02 대기 현황판",
     "K-01 주방 KDS",
   ];
 
   @override
   Widget build(BuildContext context) {
+    // DartPad 화면이 좁을 수 있으므로 레이아웃을 유연하게 조정
     return Scaffold(
       backgroundColor: const Color(0xFF1E1E1E),
-      body: SafeArea(
-        child: Row(
-          children: [
-            // [Left] Screen List
-            Container(
-              width: 260,
-              color: const Color(0xFF2D2D2D),
-              child: Column(
-                children: [
-                  Container(
-                    height: 70,
-                    alignment: Alignment.centerLeft,
-                    padding: const EdgeInsets.only(left: 20),
-                    child: const Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text("📱 SCREEN VIEWER", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-                        Text("Table Order System v3.1", style: TextStyle(color: Colors.grey, fontSize: 12)),
-                      ],
-                    ),
-                  ),
-                  const Divider(color: Colors.white24, height: 1),
-                  Expanded(
-                    child: ListView.builder(
-                      itemCount: _titles.length,
-                      itemBuilder: (context, index) {
-                        bool isSelected = _selectedIndex == index;
-                        return ListTile(
+      body: Row(
+        children: [
+          // [Left] Navigation List
+          Container(
+            width: 200, // 너비를 줄임
+            color: const Color(0xFF2D2D2D),
+            child: Column(
+              children: [
+                Container(
+                  height: 60,
+                  alignment: Alignment.centerLeft,
+                  padding: const EdgeInsets.only(left: 16),
+                  child: const Text("VIEWER v4.0", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                ),
+                const Divider(color: Colors.white12, height: 1),
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: _titles.length,
+                    itemBuilder: (context, index) {
+                      bool isSelected = _selectedIndex == index;
+                      String prefix = _titles[index].split(" ")[0];
+                      Color iconColor = Colors.grey;
+                      if (prefix.startsWith("A")) iconColor = Colors.blue;
+                      if (prefix.startsWith("O")) iconColor = Colors.orange;
+                      if (prefix.startsWith("T")) iconColor = Colors.green;
+                      if (prefix.startsWith("W")) iconColor = Colors.purple;
+                      if (prefix.startsWith("K")) iconColor = Colors.red;
+
+                      return Container(
+                        color: isSelected ? Colors.white.withOpacity(0.1) : null,
+                        child: ListTile(
+                          dense: true,
                           title: Text(
                             _titles[index],
-                            style: TextStyle(color: isSelected ? Colors.tealAccent : Colors.white70, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal),
+                            style: TextStyle(
+                              color: isSelected ? Colors.white : Colors.white60, 
+                              fontSize: 12,
+                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                          selected: isSelected,
-                          selectedTileColor: Colors.teal.withOpacity(0.15),
+                          leading: Icon(Icons.circle, size: 8, color: iconColor),
                           onTap: () => setState(() => _selectedIndex = index),
-                          leading: Icon(
-                            index >= 7 && index <= 11 ? Icons.tablet_android : (index == 12 ? Icons.kitchen : Icons.admin_panel_settings),
-                            size: 18, 
-                            color: isSelected ? Colors.tealAccent : Colors.white24
-                          ),
-                        );
-                      },
-                    ),
+                        ),
+                      );
+                    },
                   ),
-                ],
-              ),
-            ),
-            // [Right] Preview Area
-            Expanded(
-              child: Container(
-                margin: const EdgeInsets.all(16),
-                clipBehavior: Clip.antiAlias,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: const [BoxShadow(color: Colors.black54, blurRadius: 30, spreadRadius: 5)],
                 ),
-                child: _screens[_selectedIndex],
-              ),
+              ],
             ),
-          ],
-        ),
+          ),
+          // [Right] Screen Preview
+          Expanded(
+            child: Container(
+              margin: const EdgeInsets.all(8),
+              clipBehavior: Clip.antiAlias,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: _screens[_selectedIndex < _screens.length ? _selectedIndex : 0],
+            ),
+          ),
+        ],
       ),
     );
   }
 }
 
-// ... [이전과 동일한 A, O 그룹 화면 코드는 생략하지 않고 전체 포함] ...
+// ---------------------------------------------------------------------------
+// [Screens] 각 화면 구현체
+// ---------------------------------------------------------------------------
 
 class ScreenA01Register extends StatelessWidget {
   const ScreenA01Register({super.key});
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Container(
-        width: 480,
-        padding: const EdgeInsets.all(40),
-        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.grey[200]!)),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text("서비스 가입", style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 32),
-            const TextField(decoration: InputDecoration(labelText: "사업자등록번호 (10자리)", border: OutlineInputBorder(), prefixIcon: Icon(Icons.business))),
-            const SizedBox(height: 16),
-            const TextField(decoration: InputDecoration(labelText: "아이디 (이메일)", border: OutlineInputBorder(), prefixIcon: Icon(Icons.email))),
-            const SizedBox(height: 16),
-            const TextField(decoration: InputDecoration(labelText: "비밀번호", border: OutlineInputBorder(), prefixIcon: Icon(Icons.lock))),
-            const SizedBox(height: 32),
-            SizedBox(width: double.infinity, height: 56, child: FilledButton(onPressed: () {}, child: const Text("가입하기"))),
-          ],
+      child: SingleChildScrollView(
+        child: Container(
+          width: 300,
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text("회원가입", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 20),
+              const TextField(decoration: InputDecoration(labelText: "사업자번호", border: OutlineInputBorder())),
+              const SizedBox(height: 10),
+              const TextField(decoration: InputDecoration(labelText: "아이디", border: OutlineInputBorder())),
+              const SizedBox(height: 10),
+              const TextField(decoration: InputDecoration(labelText: "비밀번호", border: OutlineInputBorder()), obscureText: true),
+              const SizedBox(height: 20),
+              SizedBox(width: double.infinity, child: FilledButton(onPressed: () {}, child: const Text("가입"))),
+            ],
+          ),
         ),
       ),
     );
@@ -176,23 +195,20 @@ class ScreenA02Login extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: Container(
-        width: 480,
-        padding: const EdgeInsets.all(40),
-        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.grey[200]!)),
+        width: 300,
+        padding: const EdgeInsets.all(20),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.storefront, size: 80, color: Colors.teal),
-            const SizedBox(height: 24),
-            const Text("사장님 로그인", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 40),
-            const TextField(decoration: InputDecoration(labelText: "아이디", border: OutlineInputBorder(), prefixIcon: Icon(Icons.person))),
-            const SizedBox(height: 16),
-            const TextField(decoration: InputDecoration(labelText: "비밀번호", border: OutlineInputBorder(), prefixIcon: Icon(Icons.lock))),
-            const SizedBox(height: 32),
-            SizedBox(width: double.infinity, height: 56, child: FilledButton(onPressed: () {}, child: const Text("로그인"))),
-            const SizedBox(height: 16),
-            TextButton(onPressed: () {}, child: const Text("아직 계정이 없으신가요? 회원가입")),
+            const Icon(Icons.store, size: 50, color: Colors.teal),
+            const SizedBox(height: 20),
+            const Text("사장님 로그인", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 10),
+            const TextField(decoration: InputDecoration(labelText: "아이디", border: OutlineInputBorder())),
+            const SizedBox(height: 10),
+            const TextField(decoration: InputDecoration(labelText: "비밀번호", border: OutlineInputBorder()), obscureText: true),
+            const SizedBox(height: 20),
+            SizedBox(width: double.infinity, child: FilledButton(onPressed: () {}, child: const Text("로그인"))),
           ],
         ),
       ),
@@ -205,535 +221,88 @@ class ScreenO01OwnerMainTablet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Row(
-        children: [
-          NavigationRail(
-            selectedIndex: 0,
-            onDestinationSelected: (v) {},
-            labelType: NavigationRailLabelType.all,
-            destinations: const [
-              NavigationRailDestination(icon: Icon(Icons.dashboard), label: Text("대시보드")),
-              NavigationRailDestination(icon: Icon(Icons.restaurant_menu), label: Text("메뉴관리")),
-              NavigationRailDestination(icon: Icon(Icons.table_bar), label: Text("테이블")),
-              NavigationRailDestination(icon: Icon(Icons.settings), label: Text("설정")),
-            ],
-          ),
-          const VerticalDivider(width: 1),
-          Expanded(
-            child: Column(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                  color: Colors.white,
-                  child: Row(
-                    children: [
-                      const Text("내 매장 대시보드", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-                      const Spacer(),
-                      const Text("영업 상태: ", style: TextStyle(fontSize: 16)),
-                      Switch(value: true, onChanged: (v) {}, activeColor: Colors.teal),
-                      const SizedBox(width: 16),
-                      const CircleAvatar(child: Icon(Icons.person)),
-                    ],
-                  ),
-                ),
-                const Divider(height: 1),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: GridView.count(
-                      crossAxisCount: 4,
-                      crossAxisSpacing: 24,
-                      mainAxisSpacing: 24,
-                      childAspectRatio: 1.3,
-                      children: [
-                        _buildStatCard("오늘 매출", "1,240,000원", Icons.monetization_on, Colors.teal),
-                        _buildStatCard("주문 건수", "42건", Icons.receipt_long, Colors.blue),
-                        _buildActionCard(Icons.restaurant_menu, "메뉴 관리", "품절/수정", Colors.orange),
-                        _buildActionCard(Icons.table_bar, "테이블 설정", "QR/좌석", Colors.indigo),
-                        _buildActionCard(Icons.tablet_mac, "테이블 모드", "손님 화면 실행", Colors.green),
-                        _buildActionCard(Icons.kitchen, "KDS 모드", "주방 화면 실행", Colors.red),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          )
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatCard(String title, String value, IconData icon, Color color) {
-    return Card(
-      child: Padding(
+      appBar: AppBar(title: const Text("대시보드"), elevation: 0),
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: color, size: 32),
-            const Spacer(),
-            Text(title, style: TextStyle(color: Colors.grey[600])),
-            Text(value, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+            const Text("오늘의 현황", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(child: _statCard("매출", "124만원", Colors.blue)),
+                const SizedBox(width: 10),
+                Expanded(child: _statCard("순이익", "42만원", Colors.green)),
+              ],
+            ),
+            const SizedBox(height: 20),
+            const Text("바로가기", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                _actionBtn("주문판", Icons.tablet),
+                _actionBtn("KDS", Icons.kitchen),
+                _actionBtn("대기등록", Icons.people),
+                _actionBtn("현황판", Icons.tv),
+              ],
+            )
           ],
         ),
       ),
     );
   }
 
-  Widget _buildActionCard(IconData icon, String title, String subtitle, Color color) {
-    return Card(
-      color: color.withOpacity(0.05),
-      elevation: 0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: color.withOpacity(0.2))),
-      child: InkWell(
-        onTap: () {},
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            CircleAvatar(backgroundColor: color.withOpacity(0.1), radius: 30, child: Icon(icon, size: 32, color: color)),
-            const SizedBox(height: 16),
-            Text(title, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.grey[800])),
-            Text(subtitle, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
-          ],
-        ),
+  Widget _statCard(String title, String val, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(color: Colors.white, border: Border.all(color: Colors.grey.shade300), borderRadius: BorderRadius.circular(8)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [Text(title, style: const TextStyle(color: Colors.grey)), Text(val, style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: color))],
       ),
     );
+  }
+
+  Widget _actionBtn(String label, IconData icon) {
+    return Chip(label: Text(label), avatar: Icon(icon, size: 18));
   }
 }
 
 class ScreenO02MenuMasterDetail extends StatelessWidget {
   const ScreenO02MenuMasterDetail({super.key});
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("메뉴 통합 관리"), elevation: 1),
+      appBar: AppBar(title: const Text("메뉴/원가 관리")),
       body: Row(
         children: [
           Expanded(
             flex: 1,
-            child: Container(
-              color: Colors.white,
-              child: Column(
-                children: [
-                  const Padding(
-                    padding: EdgeInsets.all(16.0),
-                    child: TextField(decoration: InputDecoration(hintText: "메뉴 검색", prefixIcon: Icon(Icons.search), border: OutlineInputBorder(), contentPadding: EdgeInsets.zero)),
-                  ),
-                  Expanded(
-                    child: ListView.separated(
-                      itemCount: 8,
-                      separatorBuilder: (_, __) => const Divider(height: 1),
-                      itemBuilder: (context, index) {
-                        bool isSelected = index == 0;
-                        return ListTile(
-                          selected: isSelected,
-                          selectedTileColor: Colors.teal.withOpacity(0.1),
-                          leading: Container(width: 50, height: 50, color: Colors.grey[200], child: const Icon(Icons.fastfood)),
-                          title: Text("메뉴 이름 ${index + 1}"),
-                          subtitle: const Text("12,000원"),
-                          trailing: isSelected ? const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.teal) : null,
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ),
+            child: ListView.separated(
+              itemCount: 5,
+              separatorBuilder: (_,__) => const Divider(height: 1),
+              itemBuilder: (_, i) => ListTile(title: Text("메뉴 ${i+1}"), subtitle: Text("12,000원"), selected: i==0),
             ),
           ),
           const VerticalDivider(width: 1),
           Expanded(
             flex: 2,
-            child: Container(
-              color: Colors.grey[50],
-              padding: const EdgeInsets.all(32),
-              child: Card(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(32),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          const Text("메뉴 수정", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-                          const Spacer(),
-                          const Text("품절 처리 ", style: TextStyle(fontWeight: FontWeight.bold)),
-                          Switch(value: false, onChanged: (v) {}, activeColor: Colors.red),
-                        ],
-                      ),
-                      const Divider(height: 40),
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Container(
-                            width: 200, height: 200,
-                            decoration: BoxDecoration(color: Colors.grey[200], borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.grey[300]!)),
-                            child: const Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.add_a_photo, size: 50, color: Colors.grey), SizedBox(height: 8), Text("이미지 변경")]),
-                          ),
-                          const SizedBox(width: 32),
-                          const Expanded(
-                            child: Column(
-                              children: [
-                                TextField(decoration: InputDecoration(labelText: "메뉴명", border: OutlineInputBorder())),
-                                SizedBox(height: 20),
-                                TextField(decoration: InputDecoration(labelText: "가격", border: OutlineInputBorder(), suffixText: "원")),
-                                SizedBox(height: 20),
-                                TextField(decoration: InputDecoration(labelText: "카테고리", border: OutlineInputBorder())),
-                              ],
-                            ),
-                          )
-                        ],
-                      ),
-                      const SizedBox(height: 20),
-                      const TextField(decoration: InputDecoration(labelText: "설명", border: OutlineInputBorder()), maxLines: 3),
-                      const SizedBox(height: 32),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          OutlinedButton(onPressed: () {}, child: const Text("삭제", style: TextStyle(color: Colors.red))),
-                          const SizedBox(width: 16),
-                          FilledButton.icon(onPressed: () {}, icon: const Icon(Icons.save), label: const Text("변경사항 저장")),
-                        ],
-                      )
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class ScreenO04Banner extends StatelessWidget {
-  const ScreenO04Banner({super.key});
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text("배너 관리")),
-      body: Row(
-        children: [
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.all(24),
-              children: [
-                _buildBannerItem(1, true),
-                _buildBannerItem(2, true),
-                _buildBannerItem(3, false),
-                const SizedBox(height: 24),
-                Center(child: OutlinedButton.icon(onPressed: () {}, icon: const Icon(Icons.add), label: const Text("배너 추가하기"))),
-              ],
-            ),
-          ),
-          const VerticalDivider(width: 1),
-          Expanded(
-            child: Container(
-              color: Colors.grey[100],
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: const [
-                    Icon(Icons.tablet_mac, size: 60, color: Colors.grey),
-                    SizedBox(height: 16),
-                    Text("테이블 화면 미리보기"),
-                  ],
-                ),
-              ),
-            ),
-          )
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBannerItem(int index, bool isActive) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 16),
-      child: ListTile(
-        contentPadding: const EdgeInsets.all(16),
-        leading: Container(width: 100, color: Colors.indigo[100], child: const Icon(Icons.image)),
-        title: Text("프로모션 배너 $index"),
-        subtitle: Text(isActive ? "노출중" : "숨김"),
-        trailing: Switch(value: isActive, onChanged: (v) {}),
-      ),
-    );
-  }
-}
-
-class ScreenO05Table extends StatelessWidget {
-  const ScreenO05Table({super.key});
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text("테이블 관리")),
-      body: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          children: [
-            Row(
-              children: [
-                const Text("총 좌석 수: ", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                const SizedBox(width: 16),
-                const SizedBox(width: 100, child: TextField(decoration: InputDecoration(border: OutlineInputBorder(), hintText: "10"))),
-                const SizedBox(width: 16),
-                FilledButton(onPressed: () {}, child: const Text("적용")),
-              ],
-            ),
-            const Divider(height: 40),
-            Expanded(
-              child: GridView.builder(
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 6, childAspectRatio: 1.5, crossAxisSpacing: 16, mainAxisSpacing: 16),
-                itemCount: 15,
-                itemBuilder: (context, index) {
-                  return Card(
-                    color: index < 10 ? Colors.teal[50] : Colors.grey[200],
-                    child: Center(child: Text("Table ${index+1}\n(ID: ${1000+index})", textAlign: TextAlign.center)),
-                  );
-                },
-              ),
-            )
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class ScreenO06Inquiry extends StatelessWidget {
-  const ScreenO06Inquiry({super.key});
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Container(
-        width: 600,
-        padding: const EdgeInsets.all(32),
-        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.grey[300]!)),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text("문의하기", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 24),
-            const TextField(decoration: InputDecoration(hintText: "제목", border: OutlineInputBorder())),
-            const SizedBox(height: 16),
-            const TextField(decoration: InputDecoration(hintText: "내용을 자세히 적어주세요.", border: OutlineInputBorder()), maxLines: 5),
-            const SizedBox(height: 24),
-            SizedBox(width: double.infinity, height: 50, child: FilledButton.icon(onPressed: () {}, icon: const Icon(Icons.send), label: const Text("보내기"))),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ===========================================================================
-// [Group T] 테이블 (Table)
-// ===========================================================================
-
-class ScreenT01ScrollSpy extends StatefulWidget {
-  const ScreenT01ScrollSpy({super.key});
-  @override
-  State<ScreenT01ScrollSpy> createState() => _ScreenT01ScrollSpyState();
-}
-
-class _ScreenT01ScrollSpyState extends State<ScreenT01ScrollSpy> {
-  final List<String> _categories = ["🔥 인기 메뉴", "🍝 파스타", "🍕 피자", "🥗 샐러드", "🍺 음료/주류"];
-  final Map<String, int> _itemCounts = {
-    "🔥 인기 메뉴": 3,
-    "🍝 파스타": 6,
-    "🍕 피자": 4,
-    "🥗 샐러드": 3,
-    "🍺 음료/주류": 5,
-  };
-  final ScrollController _scrollController = ScrollController();
-  int _selectedCategoryIndex = 0;
-  bool _isTapScrolling = false;
-  final List<double> _offsets = [];
-
-  @override
-  void initState() {
-    super.initState();
-    _calculateOffsets();
-    _scrollController.addListener(_onScroll);
-  }
-
-  void _calculateOffsets() {
-    double currentOffset = 0;
-    _offsets.add(0);
-    currentOffset += 180; 
-    for (int i = 0; i < _categories.length; i++) {
-      String cat = _categories[i];
-      int count = _itemCounts[cat]!;
-      int rows = (count / 3).ceil();
-      double sectionHeight = 60.0 + (rows * 240.0) + (rows * 16.0);
-      if (i < _categories.length - 1) {
-        currentOffset += sectionHeight;
-        _offsets.add(currentOffset);
-      }
-    }
-  }
-
-  void _onScroll() {
-    if (_isTapScrolling) return;
-    double offset = _scrollController.offset;
-    for (int i = _categories.length - 1; i >= 0; i--) {
-      if (offset >= _offsets[i] - 100) {
-        if (_selectedCategoryIndex != i) setState(() => _selectedCategoryIndex = i);
-        break;
-      }
-    }
-  }
-
-  void _scrollToCategory(int index) async {
-    setState(() {
-      _selectedCategoryIndex = index;
-      _isTapScrolling = true;
-    });
-    await _scrollController.animateTo(
-      _offsets[index],
-      duration: const Duration(milliseconds: 500),
-      curve: Curves.easeInOut,
-    );
-    _isTapScrolling = false;
-  }
-
-  @override
-  void dispose() {
-    _scrollController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text("1번 테이블 (맛있는 파스타)", style: TextStyle(fontWeight: FontWeight.bold)),
-        actions: [
-          OutlinedButton.icon(onPressed: () {}, icon: const Icon(Icons.notifications_active), label: const Text("직원호출")),
-          const SizedBox(width: 12),
-          FilledButton.icon(onPressed: () {}, icon: const Icon(Icons.receipt), label: const Text("주문내역")),
-          const SizedBox(width: 16),
-        ],
-      ),
-      body: Row(
-        children: [
-          SizedBox(
-            width: 100,
-            child: NavigationRail(
-              selectedIndex: _selectedCategoryIndex,
-              onDestinationSelected: _scrollToCategory,
-              labelType: NavigationRailLabelType.all,
-              groupAlignment: -0.9,
-              destinations: _categories.map((cat) {
-                IconData icon = Icons.circle;
-                if (cat.contains("인기")) icon = Icons.local_fire_department;
-                else if (cat.contains("파스타")) icon = Icons.lunch_dining;
-                else if (cat.contains("피자")) icon = Icons.local_pizza;
-                else if (cat.contains("샐러드")) icon = Icons.grass;
-                else if (cat.contains("음료")) icon = Icons.local_drink;
-                return NavigationRailDestination(
-                  icon: Icon(icon),
-                  selectedIcon: Icon(icon, color: Colors.teal),
-                  label: Text(cat.split(" ")[1], style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                );
-              }).toList(),
-            ),
-          ),
-          const VerticalDivider(width: 1),
-          Expanded(
-            flex: 3,
-            child: CustomScrollView(
-              controller: _scrollController,
-              slivers: [
-                SliverToBoxAdapter(
-                  child: Container(
-                    height: 150,
-                    margin: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(color: Colors.blue[50], borderRadius: BorderRadius.circular(12)),
-                    child: const Center(child: Text("📢 배너 슬라이드 (가로 꽉 참)")),
-                  ),
-                ),
-                for (int i = 0; i < _categories.length; i++) ...[
-                  SliverPersistentHeader(
-                    pinned: true,
-                    delegate: _SliverHeaderDelegate(title: _categories[i], color: Colors.white),
-                  ),
-                  SliverPadding(
-                    padding: const EdgeInsets.all(16),
-                    sliver: SliverGrid(
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 3,
-                        childAspectRatio: 0.75,
-                        crossAxisSpacing: 16,
-                        mainAxisSpacing: 16,
-                      ),
-                      delegate: SliverChildBuilderDelegate(
-                        (context, index) {
-                          return Card(
-                            clipBehavior: Clip.antiAlias,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                Expanded(child: Container(color: Colors.grey[200], child: const Icon(Icons.fastfood, size: 40, color: Colors.grey))),
-                                Padding(
-                                  padding: const EdgeInsets.all(12),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text("${_categories[i].split(" ")[1]} ${index + 1}", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                                      Text("${12000 + index * 500}원", style: const TextStyle(color: Colors.teal, fontWeight: FontWeight.bold)),
-                                    ],
-                                  ),
-                                )
-                              ],
-                            ),
-                          );
-                        },
-                        childCount: _itemCounts[_categories[i]]!,
-                      ),
-                    ),
-                  ),
-                ],
-                const SliverToBoxAdapter(child: SizedBox(height: 100)),
-              ],
-            ),
-          ),
-          const VerticalDivider(width: 1),
-          Expanded(
-            flex: 1,
-            child: Container(
-              color: Colors.white,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
               child: Column(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    color: Colors.teal,
-                    width: double.infinity,
-                    child: const Text("장바구니", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-                  ),
-                  Expanded(
-                    child: ListView(
-                      children: const [
-                        ListTile(title: Text("파스타 1"), subtitle: Text("1개"), trailing: Text("12,000")),
-                        ListTile(title: Text("콜라"), subtitle: Text("2개"), trailing: Text("4,000")),
-                      ],
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: const BoxDecoration(border: Border(top: BorderSide(color: Colors.grey))),
-                    child: Column(
-                      children: [
-                        const Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text("합계"), Text("16,000원", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold))]),
-                        const SizedBox(height: 16),
-                        SizedBox(width: double.infinity, height: 56, child: FilledButton(onPressed: () {}, child: const Text("주문하기"))),
-                      ],
-                    ),
-                  )
+                children: const [
+                  TextField(decoration: InputDecoration(labelText: "메뉴명", border: OutlineInputBorder())),
+                  SizedBox(height: 10),
+                  TextField(decoration: InputDecoration(labelText: "판매가", border: OutlineInputBorder())),
+                  SizedBox(height: 10),
+                  TextField(decoration: InputDecoration(labelText: "원가 (Cost)", border: OutlineInputBorder())),
+                  SizedBox(height: 20),
+                  Text("옵션 그룹 연결", style: TextStyle(fontWeight: FontWeight.bold)),
+                  CheckboxListTile(value: true, onChanged: null, title: Text("맵기 조절")),
+                  CheckboxListTile(value: true, onChanged: null, title: Text("토핑 추가")),
                 ],
               ),
             ),
@@ -744,53 +313,55 @@ class _ScreenT01ScrollSpyState extends State<ScreenT01ScrollSpy> {
   }
 }
 
-class _SliverHeaderDelegate extends SliverPersistentHeaderDelegate {
-  final String title;
-  final Color color;
-  _SliverHeaderDelegate({required this.title, required this.color});
+class ScreenO07WaitingAdmin extends StatelessWidget {
+  const ScreenO07WaitingAdmin({super.key});
   @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
-    return Container(
-      color: color,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      alignment: Alignment.centerLeft,
-      child: Text(title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87)),
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text("대기 관리")),
+      body: ListView.builder(
+        itemCount: 3,
+        itemBuilder: (_, i) => ListTile(
+          leading: CircleAvatar(child: Text("${i+1}")),
+          title: Text("대기번호 ${100+i}"),
+          trailing: ElevatedButton(onPressed: (){}, child: const Text("호출")),
+        ),
+      ),
     );
   }
-  @override double get maxExtent => 60.0;
-  @override double get minExtent => 60.0;
-  @override bool shouldRebuild(covariant _SliverHeaderDelegate oldDelegate) => oldDelegate.title != title;
 }
+
+// 나머지 빈 화면들
+class ScreenO04Banner extends StatelessWidget { const ScreenO04Banner({super.key}); @override Widget build(BuildContext context) => const Center(child: Text("배너 관리")); }
+class ScreenO05Table extends StatelessWidget { const ScreenO05Table({super.key}); @override Widget build(BuildContext context) => const Center(child: Text("테이블 관리")); }
+class ScreenO06Inquiry extends StatelessWidget { const ScreenO06Inquiry({super.key}); @override Widget build(BuildContext context) => const Center(child: Text("문의하기")); }
+class ScreenO08OptionGroup extends StatelessWidget { const ScreenO08OptionGroup({super.key}); @override Widget build(BuildContext context) => const Center(child: Text("옵션 그룹 관리")); }
+class ScreenO09OptionDetail extends StatelessWidget { const ScreenO09OptionDetail({super.key}); @override Widget build(BuildContext context) => const Center(child: Text("옵션 상세 관리")); }
+
+class ScreenT01ScrollSpy extends StatelessWidget { const ScreenT01ScrollSpy({super.key}); @override Widget build(BuildContext context) => const Center(child: Text("T-01 메인 화면")); }
 
 class ScreenT02Option extends StatelessWidget {
   const ScreenT02Option({super.key});
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Container(
-        width: 600, height: 500,
-        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), boxShadow: const [BoxShadow(blurRadius: 20, color: Colors.black26)]),
-        child: Row(
+    return Scaffold(
+      appBar: AppBar(title: const Text("옵션 선택")),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(child: Container(color: Colors.grey[200], child: const Icon(Icons.fastfood, size: 100, color: Colors.grey))),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text("해물 파스타", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-                    const Text("12,000원", style: TextStyle(fontSize: 18, color: Colors.grey)),
-                    const Divider(height: 32),
-                    const Text("옵션 선택", style: TextStyle(fontWeight: FontWeight.bold)),
-                    RadioListTile(value: 1, groupValue: 1, onChanged: (v) {}, title: const Text("매운맛")),
-                    RadioListTile(value: 2, groupValue: 1, onChanged: (v) {}, title: const Text("순한맛")),
-                    const Spacer(),
-                    SizedBox(width: double.infinity, height: 50, child: FilledButton(onPressed: () {}, child: const Text("담기")))
-                  ],
-                ),
-              ),
-            )
+            const Text("비프 카레", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+            const Divider(),
+            const Text("맵기 (필수)", style: TextStyle(fontWeight: FontWeight.bold)),
+            RadioListTile(value: 1, groupValue: 1, onChanged: (v){}, title: const Text("1단계")),
+            RadioListTile(value: 2, groupValue: 1, onChanged: (v){}, title: const Text("2단계")),
+            const SizedBox(height: 10),
+            const Text("토핑 (선택)", style: TextStyle(fontWeight: FontWeight.bold)),
+            CheckboxListTile(value: true, onChanged: (v){}, title: const Text("돈카츠 (+3500원)")),
+            CheckboxListTile(value: false, onChanged: (v){}, title: const Text("치즈 (+1500원)")),
+            const Spacer(),
+            SizedBox(width: double.infinity, child: FilledButton(onPressed: (){}, child: const Text("담기")))
           ],
         ),
       ),
@@ -798,248 +369,45 @@ class ScreenT02Option extends StatelessWidget {
   }
 }
 
-class ScreenT03Cart extends StatefulWidget {
-  const ScreenT03Cart({super.key});
-  @override
-  State<ScreenT03Cart> createState() => _ScreenT03CartState();
-}
+class ScreenT03Cart extends StatelessWidget { const ScreenT03Cart({super.key}); @override Widget build(BuildContext context) => const Center(child: Text("장바구니")); }
+class ScreenT04StaffCall extends StatelessWidget { const ScreenT04StaffCall({super.key}); @override Widget build(BuildContext context) => const Center(child: Text("직원 호출")); }
+class ScreenT05AdminAuth extends StatelessWidget { const ScreenT05AdminAuth({super.key}); @override Widget build(BuildContext context) => const Center(child: Text("관리자 인증")); }
 
-class _ScreenT03CartState extends State<ScreenT03Cart> {
-  int _paymentMode = 0; // 0: 일괄, 1: 개별
-  final List<Map<String, dynamic>> _items = [
-    {"name": "해물 파스타", "price": 12000, "qty": 1},
-    {"name": "제로 콜라", "price": 2000, "qty": 1},
-    {"name": "마르게리타 피자", "price": 18000, "qty": 1},
-  ];
-  final Set<int> _selectedIndices = {};
-
-  @override
-  void initState() {
-    super.initState();
-    _selectAll();
-  }
-
-  void _selectAll() {
-    _selectedIndices.clear();
-    for (int i = 0; i < _items.length; i++) _selectedIndices.add(i);
-  }
-
+class ScreenW01WaitingRegister extends StatelessWidget {
+  const ScreenW01WaitingRegister({super.key});
   @override
   Widget build(BuildContext context) {
-    int grandTotal = 0;
-    for (var item in _items) grandTotal += (item["price"] as int) * (item["qty"] as int);
-
-    int selectedTotal = 0;
-    if (_paymentMode == 0) {
-      selectedTotal = grandTotal;
-    } else {
-      for (int i in _selectedIndices) selectedTotal += (_items[i]["price"] as int) * (_items[i]["qty"] as int);
-    }
-
-    return Scaffold(
-      appBar: AppBar(title: const Text("주문 및 결제 확인")),
-      body: Row(
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Expanded(
-            flex: 3,
-            child: Container(
-              color: Colors.grey[50],
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text("주문 내역", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 16),
-                  Expanded(
-                    child: ListView.separated(
-                      itemCount: _items.length,
-                      separatorBuilder: (_, __) => const Divider(),
-                      itemBuilder: (context, index) {
-                        final item = _items[index];
-                        bool isSelected = _paymentMode == 0 ? true : _selectedIndices.contains(index);
-                        return Card(
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8), side: BorderSide(color: isSelected ? Colors.teal : Colors.grey[300]!, width: isSelected ? 2 : 1)),
-                          child: CheckboxListTile(
-                            value: isSelected,
-                            onChanged: _paymentMode == 0 ? null : (v) => setState(() => v! ? _selectedIndices.add(index) : _selectedIndices.remove(index)),
-                            activeColor: Colors.teal,
-                            title: Text(item["name"], style: const TextStyle(fontWeight: FontWeight.bold)),
-                            subtitle: Text("${item["price"]}원 x ${item["qty"]}개"),
-                            secondary: Text("${item["price"] * item["qty"]}원", style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const VerticalDivider(width: 1),
-          Container(
-            width: 380,
-            color: Colors.white,
-            padding: const EdgeInsets.all(32),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const Text("결제 방식 선택", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 16),
-                Container(
-                  height: 50,
-                  decoration: BoxDecoration(color: Colors.grey[200], borderRadius: BorderRadius.circular(8)),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: GestureDetector(
-                          onTap: () => setState(() { _paymentMode = 0; _selectAll(); }),
-                          child: Container(
-                            decoration: BoxDecoration(color: _paymentMode == 0 ? Colors.teal : Colors.transparent, borderRadius: BorderRadius.circular(8)),
-                            alignment: Alignment.center,
-                            child: Text("일괄 결제", style: TextStyle(color: _paymentMode == 0 ? Colors.white : Colors.black, fontWeight: FontWeight.bold)),
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                        child: GestureDetector(
-                          onTap: () => setState(() { _paymentMode = 1; _selectedIndices.clear(); }),
-                          child: Container(
-                            decoration: BoxDecoration(color: _paymentMode == 1 ? Colors.teal : Colors.transparent, borderRadius: BorderRadius.circular(8)),
-                            alignment: Alignment.center,
-                            child: Text("개별 결제", style: TextStyle(color: _paymentMode == 1 ? Colors.white : Colors.black, fontWeight: FontWeight.bold)),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                if (_paymentMode == 1) const Padding(padding: EdgeInsets.only(top: 12), child: Text("* 리스트에서 결제할 메뉴를 선택해주세요.", style: TextStyle(color: Colors.orange, fontSize: 13))),
-                const Spacer(),
-                Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [const Text("총 주문 금액", style: TextStyle(color: Colors.grey)), Text("$grandTotal원", style: const TextStyle(color: Colors.grey, decoration: TextDecoration.lineThrough))]),
-                const SizedBox(height: 16),
-                const Divider(),
-                const SizedBox(height: 16),
-                Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [const Text("결제할 금액", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)), Text("$selectedTotal원", style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.teal))]),
-                const SizedBox(height: 32),
-                SizedBox(height: 60, child: FilledButton(onPressed: selectedTotal > 0 ? () {} : null, child: Text(_paymentMode == 0 ? "$selectedTotal원 결제하기" : "선택 금액($selectedTotal원) 결제", style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)))),
-              ],
-            ),
-          ),
+          const Icon(Icons.touch_app, size: 60, color: Colors.teal),
+          const SizedBox(height: 20),
+          const Text("대기 등록", style: TextStyle(fontSize: 24)),
+          const SizedBox(height: 20),
+          ElevatedButton(onPressed: (){}, child: const Text("터치하여 시작"))
         ],
       ),
     );
   }
 }
 
-// ★★★ T-04: 직원 호출 (수정됨 - 실제 아이콘 및 텍스트 적용) ★★★
-class ScreenT04StaffCall extends StatelessWidget {
-  const ScreenT04StaffCall({super.key});
-
-  final List<Map<String, dynamic>> _callOptions = const [
-    {"label": "물", "icon": Icons.water_drop},
-    {"label": "앞치마", "icon": Icons.checkroom},
-    {"label": "물티슈", "icon": Icons.cleaning_services},
-    {"label": "수저", "icon": Icons.dining},
-    {"label": "반찬리필", "icon": Icons.rice_bowl},
-    {"label": "직원호출", "icon": Icons.person_pin_circle},
-  ];
-
+class ScreenW02WaitingBoard extends StatelessWidget {
+  const ScreenW02WaitingBoard({super.key});
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: Colors.black54, // 모달 배경 느낌
-      child: Center(
-        child: Container(
-          width: 500,
-          height: 400,
-          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(24.0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: const [
-                    Text("직원 호출", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-                    CloseButton(),
-                  ],
-                ),
-              ),
-              Expanded(
-                child: GridView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 3,
-                    mainAxisSpacing: 16,
-                    crossAxisSpacing: 16,
-                    childAspectRatio: 1.4,
-                  ),
-                  itemCount: _callOptions.length,
-                  itemBuilder: (context, index) {
-                    final item = _callOptions[index];
-                    bool isHighlight = item['label'] == '직원호출';
-                    return Container(
-                      decoration: BoxDecoration(
-                        color: isHighlight ? Colors.teal[50] : Colors.white,
-                        border: Border.all(color: isHighlight ? Colors.teal : Colors.grey[300]!, width: isHighlight ? 2 : 1),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(item['icon'], size: 32, color: isHighlight ? Colors.teal : Colors.grey[700]),
-                          const SizedBox(height: 8),
-                          Text(item['label'], style: TextStyle(fontSize: 16, fontWeight: isHighlight ? FontWeight.bold : FontWeight.normal, color: isHighlight ? Colors.teal : Colors.black)),
-                        ],
-                      ),
-                    );
-                  },
-                ),
-              ),
-              const SizedBox(height: 24),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ★★★ T-05: 관리자 인증 (수정됨 - 레이아웃 꽉 참 방지) ★★★
-class ScreenT05AdminAuth extends StatelessWidget {
-  const ScreenT05AdminAuth({super.key});
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      color: Colors.black87, // 보안 화면 느낌
-      child: Center(
-        child: Container(
-          width: 350,
-          // 높이 지정 없이 내용물만큼만 차지하도록 Column에 MainAxisSize.min 적용
-          padding: const EdgeInsets.all(32),
-          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
-          child: Column(
-            mainAxisSize: MainAxisSize.min, // ★ 중요: 내용만큼만 높이 차지
-            children: [
-              const Icon(Icons.admin_panel_settings, size: 56, color: Colors.redAccent),
-              const SizedBox(height: 24),
-              const Text("관리자 인증", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              const Text("점주 모드로 복귀하려면\n비밀번호를 입력하세요.", textAlign: TextAlign.center, style: TextStyle(color: Colors.grey)),
-              const SizedBox(height: 32),
-              const TextField(
-                obscureText: true,
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 24, letterSpacing: 4),
-                decoration: InputDecoration(border: OutlineInputBorder(), hintText: "PIN 번호"),
-              ),
-              const SizedBox(height: 24),
-              SizedBox(width: double.infinity, height: 50, child: FilledButton(onPressed: () {}, style: FilledButton.styleFrom(backgroundColor: Colors.redAccent), child: const Text("인증하기"))),
-              const SizedBox(height: 16),
-              TextButton(onPressed: () {}, child: const Text("취소 (테이블 화면 유지)")),
-            ],
-          ),
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: const [
+            Text("호출 번호", style: TextStyle(color: Colors.white, fontSize: 24)),
+            SizedBox(height: 20),
+            Text("105", style: TextStyle(color: Colors.yellow, fontSize: 100, fontWeight: FontWeight.bold)),
+            SizedBox(height: 40),
+            Text("대기인원 5팀", style: TextStyle(color: Colors.white70)),
+          ],
         ),
       ),
     );
@@ -1051,32 +419,24 @@ class ScreenK01KDS extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF263238),
-      appBar: AppBar(title: const Text("KDS SYSTEM"), backgroundColor: Colors.black, foregroundColor: Colors.white),
+      backgroundColor: Colors.grey[900],
+      appBar: AppBar(title: const Text("KDS"), backgroundColor: Colors.black),
       body: ListView.builder(
+        padding: const EdgeInsets.all(10),
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.all(16),
-        itemCount: 6,
-        itemBuilder: (context, index) {
-          return Container(
-            width: 300,
-            margin: const EdgeInsets.only(right: 16),
-            child: Card(
-              color: index == 0 ? Colors.red[900] : Colors.grey[800],
-              child: Column(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    color: Colors.black26,
-                    child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text("T-${index+1}", style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)), const Text("05:00", style: TextStyle(color: Colors.white))]),
-                  ),
-                  Expanded(child: Center(child: Text("주문 상세 내용...", style: TextStyle(color: Colors.white70)))),
-                  SizedBox(width: double.infinity, height: 60, child: ElevatedButton(onPressed: () {}, child: const Text("조리 완료")))
-                ],
-              ),
-            ),
-          );
-        },
+        itemCount: 3,
+        itemBuilder: (_, i) => Container(
+          width: 200,
+          margin: const EdgeInsets.only(right: 10),
+          color: Colors.grey[800],
+          child: Column(
+            children: [
+              Container(padding: const EdgeInsets.all(10), color: Colors.black54, child: Text("주문 ${i+1}", style: const TextStyle(color: Colors.white))),
+              const Expanded(child: Center(child: Text("카레...", style: TextStyle(color: Colors.white)))),
+              ElevatedButton(onPressed: (){}, child: const Text("완료"))
+            ],
+          ),
+        ),
       ),
     );
   }

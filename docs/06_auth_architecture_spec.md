@@ -1,190 +1,103 @@
-# [설계] 인증 시스템 아키텍처 및 구현 가이드 (UUID Stateful Token)
+# [설계] 인증 시스템 아키텍처 및 구현 가이드 (v4.0)
 
-> **문서 번호:** 06_auth_architecture_spec.md  
-> **작성 일자:** 2025.01.10  
-> **설계 목적:** 복잡한 JWT 없이, **MySQL DB 기반의 세션 토큰**을 사용하여 직관적이고 강력한(강제 로그아웃 가능) 인증 시스템 구현.  
-> **전제 조건:** 로컬 DB(SQLite)를 사용하지 않으며, **서버 DB가 유일한 진실 공급원(Single Source of Truth)**이다.  
+> - **문서 번호:** 06_auth_architecture_spec.md. 
+> - **작성 일자:** 2026.01.12. 
+> - **버전:** v4.0 (Full Integration: 날씨 트리거 및 기기 보안 강화). 
+> - **설계 목적:** JWT의 복잡성 없이 **MySQL DB 기반의 세션 토큰(UUID)**을 사용하여 강력한 제어권과 날씨 데이터 수집 기능을 통합한 인증 시스템 구현.  
 
 ---
 
 ## 1. 개요 (Overview)
 
-본 프로젝트는 **Stateful Session** 방식을 채택한다.
-사용자가 로그인하면 서버는 **고유한 랜덤 문자열(UUID)**을 생성하여 DB에 저장하고, 클라이언트에게 발급한다. 이후 모든 요청 헤더에 이 토큰을 실어 보내면, 서버는 DB를 조회하여 사용자를 식별한다.
+본 프로젝트는 **Stateful Session** 방식을 채택한다. 점주가 로그인하면 서버는 고유한 랜덤 문자열(UUID)을 생성하여 DB에 저장하고 클라이언트에게 발급한다. 특히, 로그인 성공 시점은 당일 매장 운영에 필요한 **날씨 정보를 수집(방식 B)**하는 중요한 트리거로 활용된다.
 
 ### 1.1 채택 사유
-1.  **구현의 단순성:** 암호화 알고리즘이나 서명 검증 로직이 필요 없음.
-2.  **확실한 제어권:** 관리자가 특정 사용자의 DB 토큰 값을 지우거나 바꾸면, 해당 사용자는 **즉시 강제 로그아웃** 처리됨.
-3.  **단일 DB 의존:** 별도의 Redis나 캐시 서버 없이 MySQL 하나로 처리하여 인프라 비용 절감.
+1. **단순성 및 보안:** 암호화 알고리즘 없이 UUID 비교만으로 인증하며, 서버에서 토큰 삭제 시 즉시 강제 로그아웃이 가능하다.
+2. **날씨 동기화:** 점주가 앱을 켜는 행위를 '영업 개시'로 간주하여 데이터 수집 비용을 최적화한다.
+3. **기기 모드 보호:** 공용 태블릿(테이블/대기용)에서 점주 모드로 이탈하는 것을 방지하는 PIN 인증 체계를 포함한다.
 
 ---
 
 ## 2. 데이터베이스 설계 (Database Schema)
 
-기존 `USERS` 테이블에 인증 관련 컬럼을 추가한다.
+07번 명세서의 `MEMBERS` 테이블을 기준으로 인증 필드를 구성한다.
 
-### 2.1 USERS 테이블 변경 스크립트
-```sql
-ALTER TABLE users ADD COLUMN access_token VARCHAR(64) NULL;
-ALTER TABLE users ADD COLUMN last_login_at TIMESTAMP NULL;
+### 2.1 MEMBERS 테이블 인증 필드
 
--- 성능을 위해 인덱스 추가 권장
-CREATE INDEX idx_users_access_token ON users(access_token);
-```
-
-### 2.2 컬럼 명세
 | 컬럼명 | 타입 | 설명 |
 | :--- | :--- | :--- |
-| **access_token** | VARCHAR(64) | 로그인 성공 시 생성된 UUID 저장. (API 요청 시 식별자로 사용) |
-| **last_login_at** | TIMESTAMP | 마지막으로 토큰이 발급/사용된 시간. (만료 체크용) |
+| **access_token** | VARCHAR(64) | 로그인 성공 시 생성된 UUID v4 (API 요청 헤더에 Bearer로 포함) |
+| **last_login_at** | TIMESTAMP | 마지막 세션 갱신 시간 (일일 날씨 수집 여부 판단의 기준) |
 
 ---
 
-## 3. 인증 프로세스 워크플로우 (Workflow)
+## 3. 인증 프로세스 및 비즈니스 트리거 (Workflow)
 
-### 3.1 로그인 및 토큰 발급 (Login)
+### 3.1 로그인 및 날씨 수집 시퀀스 (Method B)
 
 ```mermaid
 sequenceDiagram
-    participant Client as 📱 앱 (Flutter)
+    participant Client as 📱 점주 앱 (Flutter)
     participant Server as ☁️ 서버 (API)
     participant DB as 🗄️ MySQL
+    participant W_API as 🌤️ OpenWeatherMap
 
     Client->>Server: POST /login (ID, PW)
-    Server->>DB: SELECT * FROM users WHERE login_id = ?
+    Server->>DB: MEMBERS 조회 (login_id)
     
-    alt 비밀번호 일치
-        Server->>Server: UUID 생성 (예: "550e84...")
-        Server->>DB: UPDATE users SET access_token = UUID, last_login_at = NOW()
-        Server-->>Client: 200 OK { "accessToken": "550e84..." }
-        Note right of Client: SharedPreferences에<br/>accessToken 저장
-    else 비밀번호 불일치
+    alt 인증 성공
+        Server->>Server: 신규 UUID(access_token) 생성
+        Server->>DB: access_token 저장 및 last_login_at 업데이트
+        
+        Note over Server, DB: [날씨 수집 방식 B] 오늘 데이터 확인
+        Server->>DB: SELECT * FROM DAILY_WEATHER WHERE target_date = TODAY
+        
+        opt 데이터 부재 시 (당일 최초 로그인)
+            Server->>W_API: 현재 날씨 요청 (id, icon)
+            W_API-->>Server: 날씨 정보 반환
+            Server->>DB: DAILY_WEATHER 테이블에 저장
+        end
+
+        Server-->>Client: 200 OK { accessToken: "UUID", storeId: 1 }
+    else 인증 실패
         Server-->>Client: 401 Unauthorized
     end
 ```
 
-### 3.2 자동 로그인 및 유효성 검사 (Auto Login)
-앱 실행 시(Splash Screen) 수행되는 로직입니다.
+---
 
-```mermaid
-flowchart TD
-    Start((앱 실행)) --> CheckStorage{"내부 저장소에<br/>토큰이 있는가?"}
-    
-    CheckStorage -- No --> LoginScreen["로그인 화면 이동"]
-    
-    CheckStorage -- Yes --> API["API 호출: GET /users/me<br/>(Header: Bearer 토큰)"]
-    API --> DBCheck{"DB에 해당 토큰을<br/>가진 유저가 있는가?"}
-    
-    DBCheck -- Yes --> UpdateTime["DB: last_login_at 갱신"]
-    UpdateTime --> MainScreen["메인 화면 이동"]
-    
-    DBCheck -- "No (토큰 만료/변경됨)" --> DeleteStorage["내부 저장소 토큰 삭제"]
-    DeleteStorage --> LoginScreen
-```
+## 4. 기기 운영 모드 보안 (Device Mode Security)
 
-### 3.3 로그아웃 (Logout)
+점주 앱에서 [테이블 주문 모드]나 [대기 등록 모드]로 전환된 태블릿은 일반 손님에게 노출되므로, 관리 화면으로의 무단 진입을 막는 별도의 보안 로직이 필요하다.
 
-```mermaid
-sequenceDiagram
-    participant Client as 📱 앱
-    participant Server as ☁️ 서버
-    participant DB as 🗄️ MySQL
-
-    Client->>Server: POST /logout (Header: 토큰)
-    Server->>DB: UPDATE users SET access_token = NULL WHERE access_token = ?
-    Server-->>Client: 200 OK
-    Note right of Client: SharedPreferences 삭제<br/>로그인 화면으로 이동
-```
+1. **인증 유지:** 점주의 `access_token` 권한을 세션에 유지하여 주문/대기 접수 API를 호출할 수 있게 한다.
+2. **모드 이탈 차단:** 특정 제스처(예: 로고 5회 터치) 수행 시 비밀번호 입력창을 노출한다.
+3. **PIN 검증:** `STORE_TABLES.auth_code`와 대조하여 일치할 경우에만 점주 메인 화면(`O-01`)으로 복귀시킨다.
 
 ---
 
-## 4. 구현 가이드 (Implementation)
+## 5. 구현 가이드 (Client-side)
 
-### 4.1 서버 사이드 (Backend Logic)
-* **토큰 생성:** UUID v4 표준을 사용한다.
-* **인증 미들웨어 (Auth Middleware):**
-    * 모든 보안 API 요청에 대해 HTTP Header의 `Authorization: Bearer {UUID}`를 파싱한다.
-    * `SELECT * FROM users WHERE access_token = '{UUID}'` 쿼리를 실행한다.
-    * 결과가 없으면 `401 Unauthorized`를 리턴한다.
-
-### 4.2 클라이언트 사이드 (Flutter Logic)
-앱은 **SharedPreferences**를 사용하여 토큰을 영구 저장합니다.
+### 5.1 인증 인터셉터 및 날씨 처리 (Dart 예시)
 
 ```dart
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:http/http.dart' as http;
+// API 요청 시 헤더에 토큰 자동 포함
+Future<Map<String, String>> getHeaders() async {
+  final prefs = await SharedPreferences.getInstance();
+  final token = prefs.getString('access_token');
+  return {
+    'Authorization': 'Bearer $token',
+    'Content-Type': 'application/json',
+  };
+}
 
-class AuthService {
-  static const String _tokenKey = 'auth_token';
-  static const String _baseUrl = 'http://your-server-ip:8080';
-
-  // 1. 로그인
-  Future<bool> login(String id, String pw) async {
-    final response = await http.post(
-      Uri.parse('$_baseUrl/login'),
-      body: {'id': id, 'password': pw},
-    );
-
-    if (response.statusCode == 200) {
-      // 서버에서 받은 UUID 추출 (JSON 파싱 필요)
-      // 예: Map<String, dynamic> body = jsonDecode(response.body);
-      String token = "SERVER_GENERATED_UUID"; // body['accessToken']; 
-      
-      // 내부 저장소에 저장
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_tokenKey, token);
-      return true;
-    }
-    return false;
-  }
-
-  // 2. 자동 로그인 체크 (앱 시작 시 호출)
-  Future<bool> checkAutoLogin() async {
-    final prefs = await SharedPreferences.getInstance();
-    final String? token = prefs.getString(_tokenKey);
-
-    if (token == null) return false;
-
-    // 서버에 유효성 검증 요청
-    final response = await http.get(
-      Uri.parse('$_baseUrl/users/me'),
-      headers: {'Authorization': 'Bearer $token'},
-    );
-
-    if (response.statusCode == 200) {
-      return true; // 유효함 -> 메인으로
-    } else {
-      await prefs.remove(_tokenKey); // 만료됨 -> 지우고 로그인으로
-      return false;
-    }
-  }
-
-  // 3. 로그아웃
-  Future<void> logout() async {
-    final prefs = await SharedPreferences.getInstance();
-    String? token = prefs.getString(_tokenKey);
-    
-    if (token != null) {
-        // 서버에 로그아웃 알림 (DB 토큰 삭제 요청)
-        await http.post(
-            Uri.parse('$_baseUrl/logout'),
-            headers: {'Authorization': 'Bearer $token'},
-        );
-    }
-    await prefs.remove(_tokenKey);
-  }
+// 로그인 성공 후 처리
+if (response.statusCode == 200) {
+  saveToken(response.data['accessToken']);
+  // 서버에서 날씨 수집이 완료되었으므로 대시보드 진입 시 최신 날씨 바로 로드 가능
+  navigateToDashboard();
 }
 ```
-
----
-
-## 5. 보안 및 운영 고려사항
-
-1.  **HTTPS 사용 필수:** 토큰이 `Bearer` 헤더에 평문으로 전송되므로, SSL(HTTPS)을 적용하지 않으면 토큰 탈취 위험이 있음. (개발 단계에선 HTTP 허용)
-2.  **토큰 만료 정책 (Expiration):**
-    * DB의 `last_login_at`을 활용하여, 마지막 접속일로부터 30일이 지난 토큰은 서버에서 거부하고 삭제하도록 스케줄링(Batch) 가능.
-3.  **동시 로그인 정책:**
-    * 현재 로직은 한 ID로 새 기기에서 로그인하면, 기존 기기의 토큰이 덮어씌워지므로 **기존 기기는 자동 로그아웃** 됨. (단일 기기 로그인 정책 자동 적용)
 
 ---
 
@@ -192,14 +105,16 @@ class AuthService {
 
 본 아키텍처 수립에 참고한 핵심 자료입니다.
 
-1.  **[YouTube] Flutter 상태 관리와 로컬 DB 없는 구조**
-    * 설명: 로컬 DB(SQLite) 없이 서버 API와 상태 관리만으로 앱을 구성하는 'Thin Client' 아키텍처에 대한 개념 설명.
+1. **[YouTube] Flutter 상태 관리와 로컬 DB 없는 구조**
+    * 설명: 로컬 DB(SQLite) 없이 서버 API와 상태 관리만으로 앱을 구성하는 'Thin Client' 아키텍처 개념 설명.
     * 링크: [플러터 앱의 상태 관리와 아키텍처 (Click)](https://www.youtube.com/watch?v=t3CF4i902I8)
 
-2.  **[Docs] SharedPreferences (Flutter Package)**
-    * 설명: 간단한 키-값(Key-Value) 쌍을 디바이스에 영구 저장하는 패키지 가이드.
+2. **[Docs] SharedPreferences (Flutter Package)**
+    * 설명: 인증 토큰 및 기기 설정값을 영구 저장하기 위한 패키지 가이드.
     * 링크: [pub.dev/packages/shared_preferences](https://pub.dev/packages/shared_preferences)
 
-3.  **[Docs] MySQL UUID Reference**
-    * 설명: MySQL에서 UUID를 생성하고 관리하는 방법에 대한 공식 문서.
+3. **[Docs] MySQL UUID Reference**
+    * 설명: MySQL에서 안전한 고유 식별자(UUID)를 생성하고 관리하는 방법.
     * 링크: [MySQL 8.0 Reference - UUID](https://dev.mysql.com/doc/refman/8.0/en/miscellaneous-functions.html#function_uuid)
+
+---

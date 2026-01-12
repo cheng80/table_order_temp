@@ -1,203 +1,133 @@
-# [상세] 비즈니스 로직 및 워크플로우 명세서 (v2.2)
+# [상세] 비즈니스 로직 및 워크플로우 명세서 (v4.0)
 
-> - **문서 파일명:** 04_business_logic_workflow_detail.md
-> - **작성 일자:** 2026.01.10
-> - **버전:** v2.2 (KDS 시퀀스 다이어그램 및 상세 로직 통합 완료)
-> - **참조 문서:** 03_full_screen_definition.md (화면), 05_final_integrated_erd.md (DB)
-> - **문서 목적:** 개발자가 구현해야 할 시스템의 상세 동작 조건(Validation), 분기 처리(Branching), 데이터 흐름(Data Flow) 정의
+> - **문서 파일명:** 04_business_logic_workflow_detail.md. 
+> - **버전:** v4.0 (Full Integration: 모든 다이어그램 및 정밀 로직 포함). 
+> - **참조 문서:** 03_full_screen_definition.md (v3.1), 07_database_schema_spec.md (v4.0). 
+> - **문서 목적:** 카레 전문점의 유입부터 정산까지 전 과정의 상세 동작 및 데이터 흐름 정의.  
 
 ---
 
-## 1. 시스템 진입 및 모드 전환 (System Entry)
+## 1. 시스템 진입 및 모드 전환 (System Entry & Mode)
 
-앱 실행 시 초기 진입 로직과, 점주 모드/테이블 모드 간의 전환 프로세스를 정의합니다.
+앱 실행 시의 인증과 **날씨 수집 방식 B**, 그리고 운영 모드 전환 로직입니다.
 
 ### 1.1 워크플로우 (Flowchart)
 
 ```mermaid
----
-config:
-  layout: elk
----
 flowchart TD
     %% 스타일 정의
     classDef startend fill:#2d2d2d,stroke:#2d2d2d,stroke-width:2px,color:#fff,rx:10,ry:10;
-    classDef proc fill:#fff,stroke:#333,stroke-width:1px;
     classDef decision fill:#fff,stroke:#333,stroke-width:1px,shape:diamond;
-    classDef display fill:#f4f4f4,stroke:#333,stroke-width:1px;
 
-    %% 1. 앱 실행 및 인증
     Start([앱 실행]):::startend --> CheckLogin{"로그인 여부<br/>(Token Check)"}:::decision
     
-    CheckLogin -- No --> LoginView["A-02: 로그인 화면"]:::display
-    CheckLogin -- Yes (Auto) --> OwnerMain["O-01: 점주 대시보드"]:::display
+    CheckLogin -- No --> LoginView[A-02: 로그인 화면]
+    CheckLogin -- Yes --> FetchWeather{"오늘 날씨<br/>DB 존재 여부"}:::decision
 
-    LoginView --> SignUpView["A-01: 회원가입"]:::display
-    SignUpView -- 가입 완료 --> LoginView
-    LoginView -- 로그인 성공 --> SaveToken["UUID 세션 저장"]:::proc
-    SaveToken --> OwnerMain
+    LoginView --> LoginProc[ID/PW 인증] --> FetchWeather
+    
+    FetchWeather -- "No (당일 최초)" --> APIWeather[OpenWeatherMap API 호출] --> SaveWeather[DAILY_WEATHER 저장] --> OwnerMain[O-01: 점주 대시보드]
+    FetchWeather -- Yes --> OwnerMain
+    FetchWeather -- API Fail --> LogFail[Null 허용] --> OwnerMain
 
-    %% 2. 모드 선택
-    OwnerMain --> ModeSelect{"모드 선택"}:::decision
-    
-    ModeSelect -- 메뉴/테이블 관리 --> ManageView["O-02: 메뉴 관리"]:::display
-    ModeSelect -- KDS 모드 실행 --> KdsMain["K-01: 주방 KDS"]:::display
-    
-    ModeSelect -- 테이블 모드 실행 --> TableMain["T-01: 테이블 메인"]:::display
-
-    %% 3. 관리자 복귀 (Hidden)
-    TableMain --> HiddenTouch["관리자 히든 버튼<br/>(5회 터치)"]:::proc
-    HiddenTouch --> AdminAuth["T-05: 관리자 인증"]:::display
-    
-    AdminAuth --> CheckPin{"PIN 번호 검사"}:::decision
-    CheckPin -- 일치 --> OwnerMain
-    CheckPin -- 불일치 --> AdminAuth
-    
-    %% 스타일 적용
-    class LoginView,SignUpView,OwnerMain,ManageView,KdsMain,TableMain,AdminAuth display;
+    OwnerMain --> ModeSelect{"운영 모드 선택"}:::decision
+    ModeSelect -- "테이블 주문" --> T_01[T-01: 주문판 모드]
+    ModeSelect -- "대기 등록" --> W_01[W-01: 대기 등록 모드]
+    ModeSelect -- "대기 현황판" --> W_02[W-02: 현황판 모드]
+    ModeSelect -- "주방 KDS" --> K_01[K-01: KDS 모드]
 ```
 
-### 1.2 상세 처리 로직 (Logic Specs)
-
-**1) 자동 로그인 (Auto Login)**
-* **조건:** 앱 실행 시 `SecureStorage` (또는 `SharedPreferences`)에 `access_token` 존재 여부 확인.
-* **성공:** 토큰 유효성 API 검증 통과 시 `O-01(점주 메인)`으로 즉시 이동 (Splash 생략 가능).
-* **실패:** 토큰 없음 or 만료 시 `A-02(로그인 화면)` 출력 및 내부 저장소 초기화.
-
-**2) 관리자 히든 버튼 (Admin Exit)**
-* **목적:** 손님이 임의로 앱을 종료하거나 점주 화면으로 이탈하는 것을 방지.
-* **Trigger:** 화면 로고 영역 5회 연속 터치 (또는 우측 상단 3초 롱프레스).
-* **검증:** `TABLES.auth_code` 또는 점주 비밀번호와 일치하는지 로컬/서버 검증.
-
 ---
 
-## 2. 손님 주문 및 결제 프로세스 (Order & Payment)
+## 2. 대기열 및 호출 프로세스 (Waiting & Call)
 
-테이블 모드에서 손님의 메뉴 선택, 옵션 검증, PG 결제까지의 핵심 트랜잭션 흐름입니다.
+입구 접수부터 매장 내 현황판 호출까지의 실시간 연동 흐름입니다.
 
-### 2.1 워크플로우 (Flowchart)
-
-```mermaid
----
-config:
-  layout: elk
----
-flowchart TD
-    %% 스타일 정의
-    classDef startend fill:#2d2d2d,stroke:#2d2d2d,stroke-width:2px,color:#fff,rx:10,ry:10;
-    classDef proc fill:#fff,stroke:#333,stroke-width:1px;
-    classDef decision fill:#fff,stroke:#333,stroke-width:1px,shape:diamond;
-    classDef display fill:#f4f4f4,stroke:#333,stroke-width:1px;
-
-    %% 1. 메뉴 선택 및 검증
-    TableMain["T-01: 메인 주문판"]:::display --> SelectMenu[메뉴 클릭]:::proc
-    SelectMenu --> CheckStock{"품절 여부<br/>확인"}:::decision
-    
-    CheckStock -- 품절됨 --> ToastMsg@{ shape: doc, label: "알림: 품절된 메뉴입니다" }
-    CheckStock -- 판매중 --> OptionPopup["T-02: 옵션 선택 팝업"]:::display
-    
-    OptionPopup --> SelectOption[옵션 선택 & 담기]:::proc
-    SelectOption --> ValidateOption{"유효성 검사<br/>(필수옵션 체크)"}:::decision
-    
-    ValidateOption -- Fail --> OptionPopup
-    ValidateOption -- Pass --> UpdateCart[장바구니 갱신]:::proc
-    
-    %% 2. 결제 프로세스
-    UpdateCart --> ClickOrder[주문하기 버튼]:::proc
-    ClickOrder --> PayMethod{"결제 방식 선택"}:::decision
-    
-    PayMethod -- 일괄 결제 --> PayAll[전체 금액 결제]:::proc
-    PayMethod -- 개별 결제 --> PaySplit[체크한 메뉴만 결제]:::proc
-    
-    PayAll --> CallPG["PG사 결제창 호출"]:::display
-    PaySplit --> CallPG
-    
-    CallPG --> CheckPG{"결제 결과"}:::decision
-    
-    CheckPG -- 실패/취소 --> OrderCheck["T-03: 주문 및 결제 확인"]:::display
-    OrderCheck --> PayMethod
-    
-    CheckPG -- 성공 --> OrderComplete([주문 완료 & 서버 전송]):::startend
-    
-    %% 스타일 적용
-    class TableMain,OptionPopup,CallPG,OrderCheck display;
-```
-
-### 2.2 상세 처리 로직 (Logic Specs)
-
-**1) 품절 체크 (Stock Check)**
-* **시점:** 메뉴 클릭 시점(1차), 주문하기 버튼 클릭 시점(2차).
-* **동작:** 서버의 최신 상태와 동기화된 로컬 캐시 확인. 품절 시 Toast 알림 출력 후 진입 차단.
-
-**2) 옵션 유효성 검사 (Option Validation)**
-* **필수(Mandatory):** `min_select > 0`인 옵션 그룹에서 선택 개수가 부족하면 "담기" 버튼 비활성화.
-* **최대(Limit):** `max_select` 개수를 초과하여 선택 시도 시 시각적 피드백(진동/알림) 후 선택 막음.
-
-**3) PG 결제 연동 (Payment)**
-* **Toss Payments:**
-    * `order_uuid` 생성: `ORDERS` 테이블에 INSERT 전 미리 UUID 생성.
-    * `successUrl`: 결제 성공 시 호출될 클라이언트 딥링크 또는 콜백 함수.
-* **트랜잭션:** 결제 승인(Payment Key 수신)과 동시에 `ORDERS` 상태를 PAID로 업데이트하고 `ORDER_DETAILS` 생성.
-
----
-
-## 3. 주방 KDS 주문 처리 (Real-time Order Processing)
-
-주방(KDS) 화면과 서버 간의 API 호출 및 실시간 동기화(MQTT) 흐름입니다.
-
-### 3.1 시퀀스 다이어그램 (Sequence Diagram)
+### 2.1 대기열 시퀀스 (Sequence Diagram)
 
 ```mermaid
 sequenceDiagram
-    participant Customer as 🙋‍♂️ 손님 (Table T-01)
-    participant Server as ☁️ 서버 (API/DB)
-    participant KDS as 🧑‍🍳 주방 (KDS K-01)
+    participant Guest as 🙋‍♂️ 고객 (W-01)
+    participant Server as ☁️ 서버 (DB/MQTT)
+    participant Owner as 🧑‍🍳 점주 (O-07)
+    participant Board as 📺 현황판 (W-02)
 
-    Note over Customer, Server: 주문 발생 시점
-    Customer->>Server: POST /orders (주문 데이터)
-    Server->>Server: DB 저장 & 상태 'PENDING' 설정
-    
-    par 실시간 전파 (MQTT)
-        Server->>KDS: Topic: store/{id}/orders (신규주문)
-        Server-->>Customer: (주문 접수됨 알림)
-    end
+    Guest->>Server: 대기 등록 (성함, 연락처, 인원)
+    Server->>Server: WAITING_LISTS 생성 (status: WAITING)
+    Server-->>Guest: 대기번호 및 예상시간 발권
+    Server->>Owner: [MQTT] 실시간 대기 명단 업데이트 전파
 
-    Note over KDS: 화면에 주문 티켓 생성 (깜빡임 효과)
-    
-    KDS->>KDS: [접수] 버튼 클릭
-    KDS->>Server: PATCH /orders/{id}/status (COOKING)
-    
-    par 상태 동기화
-        Server->>Customer: Topic: store/{id}/table/{no}
-        Note right of Customer: 주문내역 상태가<br/>'조리중'으로 변경됨
-    end
+    Note over Owner: 테이블 공석 확인
+    Owner->>Server: 15번 고객 [호출] 클릭
+    Server->>Server: 상태 변경 (status: CALLED)
+    Server->>Board: [MQTT] 호출 이벤트 전파 (번호: 15)
+    Board->>Board: 번호 강조(Blink) 및 안내음(TTS) 발생
 
-    Note over KDS: 조리 완료 후
-    KDS->>KDS: [완료] 버튼 클릭
-    KDS->>Server: PATCH /orders/{id}/status (SERVED)
-    
-    par 서빙 알림
-        Server->>Customer: "음식이 준비되었습니다!" 알림
-        Note right of Customer: 주문내역 상태가<br/>'서빙완료'로 변경
-    end
+    Owner->>Server: 고객 입장 확인
+    Server->>Server: 상태 변경 (status: ENTERED) 및 테이블 매칭
 ```
 
-### 3.2 처리 단계 및 동기화
+---
 
-* **신규(Pending):** `ORDERS` 생성 직후 상태. KDS에서 알림음 발생.
-* **조리중(Cooking):** 주방 직원이 [접수] 버튼 터치 시 변경.
-* **완료(Done):** 조리 완료 후 [호출/완료] 버튼 터치 시 변경. 서빙 직원(또는 손님 태블릿)에게 알림 전송.
-* **기술 스택:** WebSocket 또는 MQTT를 사용하여 테이블과 주방 간의 상태를 Delay < 500ms 이내로 동기화.
+## 3. 주문, 결제 및 KDS 처리 (Order, Pay & KDS)
+
+카레 옵션 검증, **결제 스냅샷(판매가/원가)** 저장 및 주방 전송 흐름입니다.
+
+### 3.1 주문 및 결제 시퀀스 (Sequence Diagram)
+
+```mermaid
+sequenceDiagram
+    participant Table as 📱 테이블 (T-01~03)
+    participant PG as 💳 토스페이먼츠
+    participant Server as ☁️ 서버 (API/DB)
+    participant KDS as 🧑‍🍳 주방 (K-01)
+
+    Table->>Table: 메뉴 선택 및 맵기(필수) 옵션 검증
+    Table->>PG: 결제 요청
+    PG-->>Table: 승인 완료 (paymentKey 수신)
+    
+    Table->>Server: 결제 승인 결과 및 주문 데이터 전송
+    
+    rect rgb(240, 240, 240)
+    Note over Server: [트랜잭션 시작]
+    Server->>Server: PAYMENTS 테이블 기록 (승인 정보)
+    Server->>Server: STORE_ORDERS 생성 (weather_id 연결)
+    Server->>Server: ORDER_DETAILS 생성 (판매가/원가 스냅샷 저장)
+    Server->>Server: ORDER_DETAIL_OPTIONS 생성 (추가금/원가 스냅샷 저장)
+    Note over Server: [트랜잭션 완료]
+    end
+
+    Server->>KDS: [MQTT] 신규 주문 티켓 전파 (메뉴+맵기+토핑)
+    KDS->>KDS: [접수] 클릭 -> 조리 시작
+    KDS->>Server: cook_status 업데이트 (COOKING)
+    Server->>Table: [MQTT] 조리 현황 업데이트 (조리중 표시)
+```
 
 ---
 
-## 4. 예외 및 에러 처리 (Exception Handling)
+## 4. 상세 비즈니스 로직 규격
 
-| 상황 (Context) | 에러 코드 | 사용자 메시지 (UI) | 처리 로직 |
-| :--- | :--- | :--- | :--- |
-| **네트워크 끊김** | `NET_ERR` | "네트워크 연결이 불안정합니다. 잠시 후 다시 시도해주세요." | 요청 큐(Queue)에 저장 후 재연결 시 자동 재전송 (Retry Policy) |
-| **결제 실패** | `PG_FAIL` | "카드 승인이 거절되었습니다. 잔액을 확인해주세요." | 결제창 닫고 장바구니 화면 유지 (재결제 유도) |
-| **동시성 문제** | `STOCK_ERR` | "주문 도중 품절된 메뉴가 있습니다." | 품절된 메뉴만 장바구니에서 자동 삭제 후 알림 |
-| **인증 만료** | `AUTH_EXP` | "로그인 세션이 만료되었습니다." | 로그인 화면(A-02)으로 강제 이동 및 토큰 삭제 |
+| 구분 | 항목 | 상세 내용 및 조건 |
+| :--- | :--- | :--- |
+| **날씨 연동** | 수집 데이터 | OpenWeatherMap의 `weather_condition_id`와 `icon_code`만 저장하여 통계 효율성 확보. |
+| **수익 분석** | 원가 스냅샷 | 메뉴/옵션의 마스터 가격이 변해도 과거 순이익 계산에 영향이 없도록 주문 상세 테이블에 `cost_snapshot` 필수 저장. |
+| **대기 관리** | 예상 시간 | `(WAITING 상태 팀 수 / 총 테이블 수) * avg_eating_time`으로 자동 산출. |
+| **직원 호출** | 호출 로직 | 테이블별 고유 ID와 호출 항목(`call_item_id`)을 MQTT 메시지에 담아 주방/점주 앱에 실시간 팝업 노출. |
 
 ---
+
+## 5. 정산 및 통계 계산
+
+- **당일 총 매출** = `SUM(STORE_ORDERS.total_price)`
+- **당일 총 순이익** = `총 매출` - `(SUM(ORDER_DETAILS.cost_snapshot) + SUM(ORDER_DETAIL_OPTIONS.cost_snapshot))`
+- **날씨 통계** = `DAILY_WEATHER`와 `STORE_ORDERS`를 `weather_id`로 조인하여 날씨군별 판매 랭킹 집계.
+
+---
+
+## 6. 예외 및 에러 처리
+
+| 상황 | 에러 코드 | 처리 로직 |
+| :--- | :--- | :--- |
+| **결제 승인 후 서버 통신 장애** | `PAY_SYNC_ERR` | `store_order_uuid`를 대조하여 PG 승인은 되었으나 주문서가 없는 건을 대조하여 복구. |
+| **주문 도중 품절 발생** | `STOCK_OUT` | 결제창 진입 전 최종 재고 체크 수행 후 에러 메시지 노출. |
+| **날씨 API 장애** | `WEATHER_FAIL` | 에러 무시 후 `weather_id`를 Null로 처리하여 주문 서비스는 정상 유지. |
