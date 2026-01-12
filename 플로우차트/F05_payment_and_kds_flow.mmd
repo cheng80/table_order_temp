@@ -1,0 +1,40 @@
+---
+config:
+  layout: elk
+---
+flowchart TB
+    S(["시작"])
+
+    subgraph CUSTOMER["손님"]
+        P1["결제 화면 표시"]
+        I1[/"결제 수단 선택"/]
+        I2[/"결제 실행"/]
+    end
+
+    subgraph SYSTEM["시스템"]
+        X1["결제 요청 처리"]
+        D1{"결제 성공?"}
+
+        A1@{shape: doc,label: "[시스템 알럿]<br/>결제에 실패했습니다.<br/>다시 시도해 주세요."}
+
+        X2["결제 확정"]
+        O1@{shape: doc,label: "[안내]<br/>결제가 완료되었습니다."}
+
+        X3["KDS 티켓 생성"]
+        X4["KDS 전송"]
+    end
+
+    subgraph KITCHEN["주방⠀⠀⠀⠀"]
+        K1["KDS 티켓 표시"]
+    end
+
+    E(["종료"])
+
+    %% 메인 플로우
+    S --> P1 --> I1 --> I2 --> X1 --> D1
+
+    %% 결제 실패
+    D1 -- "아니오" --> A1 --> P1
+
+    %% 결제 성공
+    D1 -- "예" --> X2 --> O1 --> X3 --> X4 --> K1 --> E

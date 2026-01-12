@@ -1,0 +1,60 @@
+---
+config:
+  layout: elk
+---
+flowchart TB
+    S(["시작"])
+
+    subgraph OWNER["점주 / 직원⠀⠀⠀⠀⠀⠀⠀⠀"]
+        P1["대기열 관리 화면 표시"]
+        I1[/"호출 대상 선택"/]
+        D1{"호출 가능한<br/>대기 항목 존재?"}
+        A1@{shape: doc,label: "[안내]<br/>호출할 대기 항목이 없습니다."}
+
+        P2["대기 호출 처리"]
+        O1@{shape: doc,label: "[안내]<br/>호출 완료"}
+
+        I2[/"입장 처리 선택"/]
+        I3[/"노쇼 처리 선택"/]
+        I4[/"취소 처리 선택"/]
+
+        O2@{shape: doc,label: "[안내]<br/>입장 처리 완료"}
+        O3@{shape: doc,label: "[안내]<br/>노쇼 처리 완료"}
+        O4@{shape: doc,label: "[안내]<br/>취소 처리 완료"}
+    end
+
+    subgraph SYSTEM["시스템"]
+        X1["대기 상태 변경<br/>WAITING → CALLED"]
+        X2["대기 상태 변경<br/>CALLED → ENTERED"]
+        X3["대기 상태 변경<br/>CALLED → NO_SHOW"]
+        X4["대기 상태 변경<br/>WAITING/CALLED → CANCELED"]
+    end
+
+    subgraph CUSTOMER["손님⠀⠀⠀⠀"]
+        C1["호출 번호 확인"]
+        C2["입장"]
+    end
+
+    E(["종료"])
+
+    %% 메인 플로우
+    S --> P1 --> I1 --> D1
+    D1 -- "아니오" --> A1 --> E
+    D1 -- "예" --> P2 --> X1 --> O1
+
+    %% 호출 이후 처리 분기
+    O1 --> I2
+    O1 --> I3
+    O1 --> I4
+
+    %% 입장
+    I2 --> X2 --> O2 --> E
+
+    %% 노쇼
+    I3 --> X3 --> O3 --> E
+
+    %% 취소
+    I4 --> X4 --> O4 --> E
+
+    %% 손님 흐름
+    X1 --> C1 --> C2

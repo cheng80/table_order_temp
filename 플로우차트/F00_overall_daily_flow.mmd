@@ -1,0 +1,40 @@
+---
+config:
+  layout: elk
+---
+flowchart TB
+    S(["시작"])
+
+    subgraph OWNER["⠀⠀⠀⠀⠀⠀⠀⠀점주 / 직원"]
+        O1["앱 실행 및 로그인"]
+        O2["운영 시작"]
+        O3["대기 관리"]
+        O4["주문 / 결제 확인"]
+        O5["운영 종료"]
+    end
+
+    subgraph CUSTOMER["⠀⠀⠀⠀⠀⠀⠀⠀손님"]
+        C1["대기 등록 또는 바로 주문"]
+        C2["메뉴 / 옵션 선택"]
+        C3["결제"]
+    end
+
+    subgraph SYSTEM["시스템"]
+        X1["운영 컨텍스트 초기화"]
+        X2["전일 대기 정리\nStartup Cleanup"]
+        X3["결제 확정"]
+        X4["KDS 전송"]
+    end
+
+    subgraph KITCHEN["⠀⠀⠀⠀⠀⠀⠀⠀주방"]
+        K1["KDS 티켓 표시"]
+    end
+
+    %% 전체 흐름
+    S --> O1 --> O2
+    O2 --> X1 --> X2
+    X2 --> O3
+
+    O3 --> C1 --> C2 --> C3
+    C3 --> X3 --> X4 --> K1
+    K1 --> O4 --> O5
