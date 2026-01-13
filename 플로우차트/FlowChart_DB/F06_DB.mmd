@@ -1,0 +1,44 @@
+---
+config:
+  layout: fixed
+---
+flowchart TB
+ subgraph DB_LABELS["DB 테이블 (마감/집계/대기정리)"]
+        DB_WAIT["[DB]<br>WAITING_LISTS"]
+        DB_ORDER["[DB]<br>STORE_ORDERS"]
+        DB_DETAIL["[DB]<br>ORDER_DETAILS,<br>ORDER_DETAIL_OPTIONS"]
+        DB_PAY["[DB]<br>PAY"]
+        DB_WEATHER["[DB]<br>STORE_DAILY_WEATHER,<br>DAILY_WEATHER"]
+  end
+    S(["시작"]) --> O1["운영 대시보드(점주)"]
+    O1 --> O2["운영 종료(마감) 버튼 선택"]
+    O2 --> A1["[확인]<br>금일 운영을 종료하시겠습니까?"]
+    A1 --> D1{"마감 확인?"}
+    D1 -- 아니오 --> A2["[알럿]<br>마감이 취소되었습니다.<br>운영을 계속합니다."]
+    A2 --> O1
+    D1 -- 예 --> X1["마감 처리 시작"]
+    X1 --> X2["미처리 대기 조회<br>(WAITING/CALLED)"]
+    X2 --> D2{"미처리 대기 존재?"}
+    D2 -- 예 --> X3["미처리 대기 일괄 마감<br>(status=CLOSED)"]
+    X3 --> M1(("합류"))
+    D2 -- 아니오 --> M1
+    M1 --> X4["금일 매출/순이익 집계<br>(스냅샷 기반)"]
+    X4 --> O3["[안내]<br>금일 마감 완료"]
+    O3 --> E(["종료"])
+    X2 -.-> DB_WAIT
+    X3 -.-> DB_WAIT
+    X4 -.-> DB_ORDER & DB_DETAIL & DB_PAY
+
+    DB_WAIT@{ shape: rect}
+    DB_ORDER@{ shape: rect}
+    DB_DETAIL@{ shape: rect}
+    DB_PAY@{ shape: rect}
+    DB_WEATHER@{ shape: rect}
+    A1@{ shape: doc}
+    A2@{ shape: doc}
+    O3@{ shape: doc}
+    style DB_WAIT    fill:#FFF8E1,stroke:#F9A825,stroke-width:1px
+    style DB_ORDER   fill:#FFF8E1,stroke:#F9A825,stroke-width:1px
+    style DB_DETAIL  fill:#FFF8E1,stroke:#F9A825,stroke-width:1px
+    style DB_PAY     fill:#FFF8E1,stroke:#F9A825,stroke-width:1px
+    style DB_WEATHER fill:#FFF8E1,stroke:#F9A825,stroke-width:1px

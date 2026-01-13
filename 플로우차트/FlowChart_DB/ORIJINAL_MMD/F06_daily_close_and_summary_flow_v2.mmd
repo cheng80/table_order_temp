@@ -1,0 +1,67 @@
+---
+config:
+  layout: elk
+---
+flowchart TB
+    %% =========================
+    %% 중앙 플로우 (운영 종료/마감)
+    %% =========================
+    S(["시작"])
+
+    O1["운영 대시보드(점주)"]
+    O2["운영 종료(마감) 버튼 선택"]
+    A1@{shape: doc, label: "[확인]<br/>금일 운영을 종료하시겠습니까?"}
+    D1{"마감 확인?"}
+    A2@{shape: doc, label: "[알럿]<br/>마감이 취소되었습니다.<br/>운영을 계속합니다."}
+
+    X1["마감 처리 시작"]
+    X2["미처리 대기 조회<br/>(WAITING/CALLED)"]
+    D2{"미처리 대기 존재?"}
+    X3["미처리 대기 일괄 마감<br/>(status=CLOSED)"]
+    M1(("합류"))
+    X4["금일 매출/순이익 집계<br/>(스냅샷 기반)"]
+    O3@{shape: doc, label: "[안내]<br/>금일 마감 완료"}
+
+    E(["종료"])
+
+    %% =========================
+    %% 중앙 플로우 연결
+    %% =========================
+    S --> O1 --> O2 --> A1 --> D1
+    D1 -- "아니오" --> A2 --> O1
+    D1 -- "예" --> X1 --> X2 --> D2
+    D2 -- "예" --> X3 --> M1
+    D2 -- "아니오" --> M1
+    M1 --> X4 --> O3 --> E
+
+    %% =========================
+    %% DB 테이블 (우측 여백 주석 영역)
+    %% =========================
+    subgraph DB_LABELS["DB 테이블 (마감/집계/대기정리)"]
+        DB_WAIT@{shape: rect, label: "[DB]<br/>WAITING_LISTS"}
+        DB_ORDER@{shape: rect, label: "[DB]<br/>STORE_ORDERS"}
+        DB_DETAIL@{shape: rect, label: "[DB]<br/>ORDER_DETAILS,<br/>ORDER_DETAIL_OPTIONS"}
+        DB_PAY@{shape: rect, label: "[DB]<br/>PAY"}
+        DB_WEATHER@{shape: rect, label: "[DB]<br/>STORE_DAILY_WEATHER,<br/>DAILY_WEATHER"}
+    end
+
+    %% =========================
+    %% DB 연결 (설명용 점선, 핵심만)
+    %% =========================
+    X2 -.-> DB_WAIT
+    X3 -.-> DB_WAIT
+
+    X4 -.-> DB_ORDER
+    X4 -.-> DB_DETAIL
+    X4 -.-> DB_PAY
+
+    %% 날씨는 집계 컨텍스트이므로 패널 표기만 (점선 생략)
+
+    %% =========================
+    %% DB 스타일 강조
+    %% =========================
+    style DB_WAIT    fill:#FFF8E1,stroke:#F9A825,stroke-width:1px
+    style DB_ORDER   fill:#FFF8E1,stroke:#F9A825,stroke-width:1px
+    style DB_DETAIL  fill:#FFF8E1,stroke:#F9A825,stroke-width:1px
+    style DB_PAY     fill:#FFF8E1,stroke:#F9A825,stroke-width:1px
+    style DB_WEATHER fill:#FFF8E1,stroke:#F9A825,stroke-width:1px

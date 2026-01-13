@@ -1,0 +1,77 @@
+---
+config:
+  layout: elk
+---
+flowchart TB
+    %% =========================
+    %% 중앙 플로우 (점주 운영 시작)
+    %% =========================
+    S(["시작"])
+
+    P1["점주 앱 실행"]
+    P2["로그인 화면 표시"]
+
+    subgraph FORM["로그인 입력"]
+        I1[/"아이디 입력"/]
+        I2[/"비밀번호 입력"/]
+    end
+
+    P3["로그인 요청"]
+    D1{"인증 성공?"}
+    A1@{shape: doc, label: "[알럿]<br/>아이디 또는 비밀번호를 확인해 주세요."}
+
+    P4["운영 컨텍스트 초기화"]
+    P5["금일 날씨 수집(1회)"]
+    D2{"날씨 수집 성공?"}
+    A2@{shape: doc, label: "[알럿]<br/>날씨 정보를 불러오지 못했습니다.<br/>운영은 계속 진행됩니다."}
+
+    P6["전일 대기 항목 조회"]
+    D3{"전일 미처리 대기 존재?"}
+    P7["전일 대기 일괄 마감 처리"]
+
+    O1@{shape: doc, label: "[안내]<br/>운영 시작 준비 완료"}
+    P8["운영 대시보드 진입"]
+
+    E(["종료"])
+
+    %% =========================
+    %% 중앙 플로우 연결
+    %% =========================
+    S --> P1 --> P2 --> I1
+    I1 --> I2 --> P3 --> D1
+
+    D1 -- "아니오" --> A1 --> P2
+    D1 -- "예" --> P4 --> P5 --> D2
+
+    D2 -- "아니오" --> A2 --> P6
+    D2 -- "예" --> P6
+
+    P6 --> D3
+    D3 -- "예" --> P7 --> O1 --> P8 --> E
+    D3 -- "아니오" --> O1 --> P8 --> E
+
+    %% =========================
+    %% DB 테이블 (우측 여백 주석 영역)
+    %% =========================
+    subgraph DB_LABELS["DB 테이블 (참조/기록)"]
+        DB_MEM@{shape: rect, label: "[DB]<br/>MEMBERS"}
+        DB_STORE@{shape: rect, label: "[DB]<br/>OWN_STORES,<br/>STORES"}
+        DB_WEATHER@{shape: rect, label: "[DB]<br/>STORE_DAILY_WEATHER,<br/>DAILY_WEATHER"}
+        DB_WAIT@{shape: rect, label: "[DB]<br/>WAITING_LISTS"}
+    end
+
+    %% =========================
+    %% DB 연결 (설명용 점선, 최소화)
+    %% =========================
+    P3 -.-> DB_MEM
+    P4 -.-> DB_STORE
+    P5 -.-> DB_WEATHER
+    P6 -.-> DB_WAIT
+
+    %% =========================
+    %% DB 스타일 강조
+    %% =========================
+    style DB_MEM     fill:#FFF8E1,stroke:#F9A825,stroke-width:1px
+    style DB_STORE   fill:#FFF8E1,stroke:#F9A825,stroke-width:1px
+    style DB_WEATHER fill:#FFF8E1,stroke:#F9A825,stroke-width:1px
+    style DB_WAIT    fill:#FFF8E1,stroke:#F9A825,stroke-width:1px

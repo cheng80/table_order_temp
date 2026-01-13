@@ -1,0 +1,60 @@
+---
+config:
+  layout: elk
+---
+flowchart TB
+    %% =========================
+    %% 중앙 플로우 (결제 확정 → KDS 전송)
+    %% =========================
+    S(["시작"])
+
+    O1["주문/결제 확인 화면 진입"]
+    O2["결제 요청(승인 시도)"]
+    X1["결제 승인 결과 수신"]
+    D1{"결제 승인 성공?"}
+    A1@{shape: doc, label: "[알럿]<br/>결제에 실패했습니다.<br/>다시 시도해 주세요."}
+
+    X2["결제 확정 처리<br/>(주문 상태 확정)"]
+    X3["KDS 티켓 생성"]
+    X4["KDS 전송"]
+    K1["KDS 티켓 표시"]
+    K2["조리 상태 업데이트"]
+
+    E(["종료"])
+
+    %% =========================
+    %% 중앙 플로우 연결
+    %% =========================
+    S --> O1 --> O2 --> X1 --> D1
+    D1 -- "아니오" --> A1 --> O2
+    D1 -- "예" --> X2 --> X3 --> X4 --> K1 --> K2 --> E
+
+    %% =========================
+    %% DB 테이블 (우측 여백 주석 영역)
+    %% =========================
+    subgraph DB_LABELS["DB 테이블 (확정/티켓/상태)"]
+        DB_ORDER@{shape: rect, label: "[DB]<br/>STORE_ORDERS"}
+        DB_DETAIL@{shape: rect, label: "[DB]<br/>ORDER_DETAILS,<br/>ORDER_DETAIL_OPTIONS"}
+        DB_PAY@{shape: rect, label: "[DB]<br/>PAY"}
+        DB_KDS@{shape: rect, label: "[DB]<br/>KDS_TICKETS"}
+    end
+
+    %% =========================
+    %% DB 연결 (설명용 점선, 핵심만)
+    %% =========================
+    O1 -.-> DB_ORDER
+    O1 -.-> DB_DETAIL
+
+    X2 -.-> DB_PAY
+    X2 -.-> DB_ORDER
+
+    X3 -.-> DB_KDS
+    K2 -.-> DB_DETAIL
+
+    %% =========================
+    %% DB 스타일 강조
+    %% =========================
+    style DB_ORDER  fill:#FFF8E1,stroke:#F9A825,stroke-width:1px
+    style DB_DETAIL fill:#FFF8E1,stroke:#F9A825,stroke-width:1px
+    style DB_PAY    fill:#FFF8E1,stroke:#F9A825,stroke-width:1px
+    style DB_KDS    fill:#FFF8E1,stroke:#F9A825,stroke-width:1px

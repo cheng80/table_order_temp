@@ -1,0 +1,40 @@
+---
+config:
+  layout: fixed
+---
+flowchart TB
+ subgraph FORM["대기 등록 입력"]
+        I1[/"이름 입력"/]
+        I2[/"전화번호 입력(필수)"/]
+        I3[/"인원 수 입력"/]
+  end
+ subgraph DB_LABELS["DB 테이블 (참조/저장)"]
+        DB_WAIT["DB<br>WAITING_LISTS"]
+        DB_STORE["DB<br>STORES"]
+  end
+    S(["시작"]) --> C1["대기 현황 화면 표시"]
+    C1 --> C2["대기 등록 선택"]
+    C2 --> I1
+    I1 --> I2
+    I2 --> I3
+    I3 --> D1{"필수값 누락?<br>(이름/전화번호)"}
+    D1 -- 예 --> A1["[알럿]<br>필수 정보를 입력해 주세요"]
+    A1 --> I1
+    D1 -- 아니오 --> D2{"중복 대기 존재?<br>(전화번호 기준)"}
+    D2 -- 예 --> A2["[알럿]<br>이미 대기 등록이 있습니다"]
+    A2 --> E(["종료"])
+    D2 -- 아니오 --> X1["대기 번호 발급"]
+    X1 --> X2["대기 등록 저장<br>(status=WAITING)"]
+    X2 --> O1["[안내]<br>대기 등록 완료"]
+    O1 --> E
+    D2 -.-> DB_WAIT
+    X2 -.-> DB_WAIT
+    C1 -.-> DB_STORE
+
+    DB_WAIT@{ shape: rect}
+    DB_STORE@{ shape: rect}
+    A1@{ shape: doc}
+    A2@{ shape: doc}
+    O1@{ shape: doc}
+    style DB_WAIT fill:#FFF8E1,stroke:#F9A825,stroke-width:1px
+    style DB_STORE fill:#FFF8E1,stroke:#F9A825,stroke-width:1px

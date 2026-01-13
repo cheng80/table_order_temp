@@ -1,0 +1,40 @@
+---
+config:
+  layout: fixed
+---
+flowchart TB
+ subgraph DB_LABELS["DB 테이블 (참조/생성)"]
+        DB_MENU["[DB]<br>MENUS,<br>MENU_CATEGORIES"]
+        DB_MAP["[DB]<br>MENU_OPTION_MAPPINGS,<br>OPTION_GROUPS"]
+        DB_OPT["[DB]<br>HAS_OPTIONS,<br>OPTIONS"]
+        DB_ORDER["[DB]<br>STORE_ORDERS"]
+        DB_DETAIL["[DB]<br>ORDER_DETAILS,<br>ORDER_DETAIL_OPTIONS"]
+  end
+    S(["시작"]) --> C1["메뉴 목록 표시"]
+    C1 --> C2["메뉴 선택"]
+    C2 --> C3["옵션 선택 팝업 표시"]
+    C3 --> C4["옵션 선택<br>(필수/선택)"]
+    C4 --> D1{"필수 옵션 충족?"}
+    D1 -- 아니오 --> A1["[알럿]<br>필수 옵션을 선택해 주세요"]
+    A1 --> C4
+    D1 -- 예 --> C5["수량/구성 확정"]
+    C5 --> C6["주문 담기(주문 생성)"]
+    C6 --> O1["[안내]<br>주문이 담겼습니다"]
+    O1 --> E(["종료"])
+    C1 -.-> DB_MENU
+    C3 -.-> DB_MAP
+    C4 -.-> DB_OPT
+    C6 -.-> DB_ORDER & DB_DETAIL
+
+    DB_MENU@{ shape: rect}
+    DB_MAP@{ shape: rect}
+    DB_OPT@{ shape: rect}
+    DB_ORDER@{ shape: rect}
+    DB_DETAIL@{ shape: rect}
+    A1@{ shape: doc}
+    O1@{ shape: doc}
+    style DB_MENU   fill:#FFF8E1,stroke:#F9A825,stroke-width:1px
+    style DB_MAP    fill:#FFF8E1,stroke:#F9A825,stroke-width:1px
+    style DB_OPT    fill:#FFF8E1,stroke:#F9A825,stroke-width:1px
+    style DB_ORDER  fill:#FFF8E1,stroke:#F9A825,stroke-width:1px
+    style DB_DETAIL fill:#FFF8E1,stroke:#F9A825,stroke-width:1px
